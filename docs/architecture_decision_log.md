@@ -84,7 +84,7 @@ for historical comparisons and report later rubric studies separately.
 ## Decision 5 — Why validate with current models, and what happened
 
 GPT-4.1 was a reasonable historical cost/reliability pair, but a
-November 2026 portfolio should distinguish a **controlled historical
+November 2026 evaluation record should distinguish a **controlled historical
 comparison** from current API model choices. After the initial five-ticket
 smoke passed for both candidates, we ran GPT-6 Luna (economical) and
 GPT-6.1 Sol (higher-priced reference) on the same 50 synthetic
