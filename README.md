@@ -133,7 +133,7 @@ same five tickets may overfit; add unseen holdout incidents before describing
 production generalization. The new enum constrains tool arguments, but it does
 not independently prove that the agent reads the right docs or follows them.
 
-## Evaluation history: v1 → v2 → v3
+## Evaluation history: v1 → v2 → v3 → v4
 
 This is an **iteration log**, not an apples-to-apples leaderboard across different
 sample sizes. Each figure below is a measured solve rate for a given candidate
@@ -147,6 +147,7 @@ benchmark has been run. The v3 measurements below are a single 50-ticket run.
 | **v2**, same 5-ticket smoke | 4/5 (80%) | 5/5 (100%) | Check constrained docs topics and evidence policy |
 | **v2**, full 50 tickets | 35/50 (70%) | 45/50 (90%) | Characterize failure types and model tradeoffs |
 | **v3**, full 50 tickets | 33/50 (66%) | 41/50 (82%) | Observed regression despite targeted improvements |
+| **v4**, full 50 tickets | 44/50 (88%) | 44/50 (88%) | Controller-driven evidence collection; action-label and judge misses |
 
 The v1 → v2 change on the same five tickets coincided with better tool-pass
 rates (GPT-4.1-mini 20% → 80%; GPT-4.1 40% → 100%), with primary diagnosis
@@ -259,7 +260,7 @@ v3 is an informative unsuccessful iteration. Keep v1–v3 and the strict
 grader intact while testing deterministic v4 evidence collection;
 independent holdout evaluation is still required.
 
-## Experimental v4: deterministic evidence orchestration (results pending)
+## Experimental v4: deterministic evidence orchestration (measured)
 
 **Motivation:** V3 was worse than V2 on the same synthetic 50-ticket
 development benchmark, despite keeping GPT-4.1 primary diagnosis at 100%.
@@ -305,8 +306,93 @@ sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 4 --judge-rubric-version
 ```
 
 Review `controller_correction`, `raw_response` and `tool_call_origin` in
-JSONL before drawing conclusions. No live v4 benchmark has been run. Evaluate
-fresh, human-reviewed unseen incidents before making production claims.
+JSONL before drawing conclusions. V4 was evaluated on the same 50-ticket development set; full observed
+results and limitations are below. Use separately developed, human-reviewed
+unseen incidents before making production claims.
+
+## Measured v4 benchmark — November 15, 2026
+
+**Source:** uploaded `report.md`, `summary.csv`, and 100 candidate records
+in `runs.jsonl` from a full 50-ticket/model run using
+`--config-version 4 --judge-rubric-version 1`. This is a single
+synthetic development-set run, not an independent production validation.
+
+| Model | V3 solved | V4 solved | V4 tool pass | V4 diagnosis | V4 avg latency | V4 est. $/ticket |
+|---|---:|---:|---:|---:|---:|---:|
+| `gpt-4.1-mini` | 33/50 (66%) | 44/50 (88%) | 50/50 (100%) | 50/50 (100%) | 1.94s | $0.000615 |
+| `gpt-4.1` | 41/50 (82%) | 44/50 (88%) | 50/50 (100%) | 50/50 (100%) | 1.83s | $0.003231 |
+
+V2's `gpt-4.1` solve rate of 90% remains the highest single-run
+score for that model. The v4 controller made **0/100 safety corrections**:
+all primary diagnoses were correct *before* postprocessing. Because
+preflight tool calls are performed deterministically, **100% tool-pass
+is a composite system property, not evidence the model independently
+selected all tools**. Latencies and inference-cost estimates exclude
+actual latency/cost of external diagnostic reads and the judge.
+
+The 12 strict failures were:
+- **10 queue secondary-action omissions** (both models on T010/T020/T030/T040/T050):
+  the responses included `tune_concurrency`, but the frozen labels
+  additionally required `retry_with_backoff` for this queue template.
+- **1 capacity secondary-action omission** (`gpt-4.1` on T015):
+  missing required `retry_with_backoff`.
+- **1 LLM judge failure** (`gpt-4.1-mini` on T044): the judge
+  called `standard-2`, `standard-4`, and `highmem-8` invented SKU
+  recommendations, although the controller trace contains the canonical
+  SKU doc listing all three. This is a **disputed judgment**, not a
+  reclassified pass; its original fail remains in the recorded 88% score.
+
+**Adjudication direction:** Retry/backoff is not inherently the required
+response to a fully saturated pool, where lowering fanout and adjusting
+concurrency address the root cause. Backoff may be useful as a bounded
+temporary mitigation, especially for transient capacity pressure, but the
+two queue families' identical telemetry does not justify contradictory
+mandatory action requirements. Maintain the historical grading labels and
+scores untouched; document a proposed versioned action policy separately
+rather than rescoring the previous runs.
+
+**Next validation:** Run the opt-in judge calibration cases with both
+original and improved rubric, then evaluate a separately authored challenge
+set. No judge-calibration agreement or challenge-set model performance is
+claimed until those runs are actually executed.
+
+## Challenge-set and judge calibration workflow (not yet evaluated)
+
+To avoid repeatedly optimizing on the 50-ticket development data, this PR
+adds `data/holdout_challenge_v1.jsonl` with **15 separately authored synthetic
+cases** across nine incident categories. They use different support-request
+wording and independently specified observation/expected-action records.
+This is an *additional challenge set*, not a statistically independent
+real-world distribution and not a blind external benchmark; scenarios were
+authored after reviewing earlier failure patterns. No model outcomes for
+these cases have been measured yet. Do not use results to revise prompts and
+then continue calling the same cases unseen.
+
+Run after merging this PR:
+
+```powershell
+git pull origin main
+python -m pip install -e ".[dev]"
+pytest -q
+
+# Evaluate the unchanged v4 system on 15 challenge tickets per model.
+sre-eval --dataset data/holdout_challenge_v1.jsonl --models gpt-4.1-mini gpt-4.1 --config-version 4 --judge-rubric-version 1 --output results/v4-challenge-v1
+
+# Separate live calibration: six handcrafted correct, wrong and unsafe cases
+# are judged under both historical rubric v1 and experimental rubric v2.
+python scripts/compare_judge_rubrics.py --output results/judge-calibration.json
+```
+
+Calibration results are **not yet known**. The experimental rubric v2 now
+receives actual canonical documentation text for *observed* `lookup_docs`
+calls, rather than a call name alone. Rubric v1's inputs and logic are
+unchanged, so historical strict solve rates are preserved. Calibrating
+against one known false-negative example (T044) risks overfitting the judge:
+review a broader blind adjudicated set before concluding calibration improved.
+
+See `evals/queue_action_policy_proposal.md` for the unresolved
+retry/backoff labeling question. The policy is **proposed, not enacted**;
+no historical grader, label, dataset, or benchmark score has been altered.
 
 ## Dataset design
 

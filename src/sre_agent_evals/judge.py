@@ -5,6 +5,7 @@ from pathlib import Path
 from openai import AsyncOpenAI
 
 from .paths import RUBRIC
+from .fixtures import DOCS
 from .schemas import Diagnosis, Ticket
 
 
@@ -32,8 +33,17 @@ def judge_payload(ticket: Ticket, output: Diagnosis, calls: list[dict],
         # Preserve historical v1 judge input structure.
         return {**base, "answer": output.customer_response}
     if rubric_version == 2:
-        # Explicit structured output lets the judge check false diagnoses.
-        return {**base, "answer": output.model_dump()}
+        # Only reveal canonical documentation actually requested in observed
+        # calls. The original judge v1 payload is unchanged for comparability.
+        looked_up_docs = []
+        for call in calls:
+            if call.get("name") != "lookup_docs":
+                continue
+            topic = call.get("arguments", {}).get("topic")
+            if topic in DOCS:
+                looked_up_docs.append({"topic": topic, "content": DOCS[topic]})
+        return {**base, "answer": output.model_dump(),
+                "retrieved_documentation": looked_up_docs}
     raise ValueError(f"Unsupported judge rubric version: {rubric_version}")
 
 
