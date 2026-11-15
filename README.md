@@ -162,6 +162,52 @@ sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 2 --output results/v2-fu
 
 Results are stochastic; use multiple seeds/runs and holdout tickets before adopting thresholds. The source run data is stored locally by the operator; this public README intentionally publishes only reviewed, aggregated and nonsensitive findings.
 
+## Experimental v3: reliable evidence and calibrated grading
+
+The original `v1` and `v2` prompt and tool contract files remain unmodified.
+The **v3** change targets patterns observed in the measured 50-ticket v2
+development benchmark; **no v3 solve-rate or cost improvement is claimed**.
+
+- **Quota:** Require a quota docs read with the exact `quota` topic before
+  recommending a quota increase. Preserve the separate org/pool evidence.
+- **Missing evidence:** Do not infer a healthy incident from an apparently
+  healthy pool when the reported failed job is unidentified; request the job
+  ID and avoid guessing one.
+- **Identifier security:** v3-only ticket-scoped `guarded_lookup` enforces exact
+  pool, org and job IDs with narrow expected syntax, rejecting whitespace,
+  appended instructions and cross-tenant identifiers before fixture access.
+  It is defense in depth over the original fixture isolation.
+- **Queue actions:** Add `audit_queue_actions` to per-ticket JSONL for
+  visibility into secondary retry/backoff requirements. **The original
+  strict grader and frozen labels remain unchanged.** Queue-label policy
+  questions should be adjudicated before relaxing any criterion.
+- **Judge calibration:** Keep rubric v1 the default for comparability. Add
+  a separate rubric v2 that inspects the structured diagnosis and explicitly
+  penalizes unsupported reassurance or false primary causes. An optional live
+  calibration script evaluates known-correct, wrong-cause and unsafe examples.
+  Judge scores are validated by code, not a self-reported `pass` field.
+
+Try v3 locally after the PR merges:
+
+```powershell
+git pull origin main
+python -m pip install -e ".[dev]"
+pytest -q
+
+# Comparable historical judge criteria:
+sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 3 --judge-rubric-version 1 --limit 5 --output results/v3-smoke
+sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 3 --judge-rubric-version 1 --output results/v3-full
+
+# Separate calibration study; do not mix with historical solve rates.
+python scripts/calibrate_judge.py --model gpt-4.1
+sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 3 --judge-rubric-version 2 --limit 5 --output results/v3-judge-v2
+```
+
+**Experiment caveat:** The prompt is being refined against this synthetic
+development dataset. New unseen, human-adjudicated holdout incidents, repeated
+model runs and judge agreement checks are needed for defensible customer
+recommendations. The 50-ticket results published above remain v2-only.
+
 ## Dataset design
 
 50 deterministic, synthetic tickets (10 scenario templates × 5 wording/number variations). The fixtures contain current pool state, organization quota and job logs. Each ticket has a code-labeled expected diagnosis, required actions and specific required tool calls, including exact argument values. Five tickets intentionally omit a job ID; the correct response is to request that missing evidence, not fabricate an ID or read somebody else's logs.
