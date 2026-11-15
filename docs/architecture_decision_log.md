@@ -84,7 +84,7 @@ for historical comparisons and report later rubric studies separately.
 ## Decision 5 — Why validate with current models, and what happened
 
 GPT-4.1 was a reasonable historical cost/reliability pair, but a
-November 2026 portfolio should distinguish a **controlled historical
+November 2026 evaluation record should distinguish a **controlled historical
 comparison** from current API model choices. After the initial five-ticket
 smoke passed for both candidates, we ran GPT-6 Luna (economical) and
 GPT-6.1 Sol (higher-priced reference) on the same 50 synthetic
@@ -102,14 +102,27 @@ was 4.02 versus 4.21 seconds respectively. These are single-run
 synthetic results; no superiority claim follows from the one-ticket
 difference versus historical V4 scores (44/50 for both GPT-4.1 models).
 
+**Judge control:** GPT-4.1 remained the judge for both historical and
+current-model runs, with rubric V1 unchanged, so that changes in the
+candidate models were not conflated with changes in the evaluation
+instrument. A fixed judge is still imperfect and can favor particular
+answer styles; separate judge calibration remains necessary.
+
 The **same five queue-saturation tickets** (`T010`, `T020`, `T030`,
 `T040`, `T050`) failed the strict action grade for *both* new models.
 Their primary diagnosis and required-tool grades passed and both
 recommended `tune_concurrency`, but omitted
-`retry_with_backoff`, which the frozen labels require. This is a
-**policy-review candidate, not permission to rewrite the scoreboard**:
-a separate domain expert should adjudicate inconsistent queue
-secondary-action requirements before any separately versioned rescore.
+`retry_with_backoff`, which the frozen labels require. Reviewing the queue
+fixtures and canonical docs led to a **versioned owner decision**:
+when healthy agents occupy all pool slots, backend capacity is
+available and organization quota remains, require
+`tune_concurrency` but not the secondary backoff action. The rule
+applies to *all ten* comparable queue cases, not just the five
+failed IDs. The original 90% scores remain unchanged. A **post-hoc
+offline V2-policy replay** of saved candidate responses returns
+**50/50 (100%) for both current models**, reflecting a **changed
+evaluation policy**, not any improvement in model behavior.
+Independent domain review remains an important deployment gate.
 
 **Decision:** The next unit of value is not more prompt tuning on a
 known synthetic dataset. It is independent label review, genuinely
@@ -131,8 +144,9 @@ deterministically.
 - One run per model/configuration on the original 50 is not a reliable
   estimate of a performance difference. Repeated ten-case adversarial
   attempts re-use the same tickets.
-- Queue secondary-action labels are inconsistent across some otherwise
-  similar variants; SME adjudication should precede rescore.
+- Queue action labels in frozen V1 were inconsistent. The owner-defined
+  [V2 queue policy](queue_action_policy_v2.md) records the evidence and
+  separate post-hoc score; SME review remains necessary before production use.
 - Real operation would require tenant isolation, production-read budget,
   human escalation policy, error-severity handling and end-to-end cost.
 - No claim is made that this synthetic prototype is production-ready.
@@ -146,4 +160,4 @@ incident**, not just API token price or a single strict solve metric.
 and iteration. The meaningful evidence of ownership is the ability to
 explain each architectural decision, rerun each experiment, identify
 confounders, and change the plan when results contradict the hypothesis.
-Do not imply all code was handwritten.
+I didn't hand-write all the code, and I don't claim to.

@@ -8,7 +8,7 @@ Does a cost-efficient current model deliver comparable strict outcomes to a
 higher-priced model under the V4 **controller-led, read-only evidence collection**
 architecture? Both models ran the same 50 pre-existing synthetic development
 tickets under V4 system instructions, tool contract, frozen labels and strict
-graders, with **LLM judge GPT-4.1, rubric version 1**. Each model attempted every
+graders, with **LLM judge GPT-4.1, rubric version 1**. **The judge model and rubric were intentionally fixed across historical and current candidate evaluations to avoid confounding model changes with judge changes.** Each model attempted every
 ticket once, sequentially. These are **system-level** results: V4 tool calls
 were selected by the controller rather than chosen by the LLM.
 
@@ -54,13 +54,24 @@ because `retry_with_backoff` was required by the frozen label but was
 not included in the recommended action list. The models did recommend
 `tune_concurrency`; some also recommended monitoring or managing load.
 
-The runner's advisory `queue_action_audit` independently flagged these
-as policy-review candidates. An action-label inconsistency across similar
-queue templates has already been noted. **This does not authorize changing
-the 45/50 strict scores.** An independent subject-matter review should
-decide whether backoff is genuinely required for a saturated-but-healthy
-queue before any *separately versioned* policy or rubric revision.
-A judge pass alone does not prove that the frozen action label is incorrect.
+The runner's advisory `queue_action_audit` flagged these as
+policy-review candidates. Comparing **all ten** `queue_saturation`
+fixtures and the canonical `queue` documentation confirms that the
+five failures and five passes describe the same operational condition:
+healthy agents, available backend capacity, occupied pool slots and
+unused organization quota. Only the original frozen label's secondary
+action differs across these equivalent scenarios.
+
+The resulting [queue remediation policy V2](queue_action_policy_v2.md)
+requires `tune_concurrency` for this condition, while treating
+`retry_with_backoff` as optional. This is a **documented owner judgment
+based on fixture evidence and customer impact**, not a change in model
+behavior. Regrading the **unchanged saved outputs offline** under that
+versioned policy produces **50/50 (100%) for both models**. This is a
+**post-hoc policy-rescore**, not a new benchmark or independent evidence
+of perfect generalization. The original **45/50 (90%)** strict scores
+remain the official frozen-label results. An independent SME review
+should assess the revised rule before operational adoption.
 
 ## Historical context (do not combine these as a new controlled trial)
 
@@ -73,7 +84,7 @@ A judge pass alone does not prove that the frozen action label is incorrect.
 
 The single-ticket difference between model generations is not evidence of
 statistical superiority. The historical and modern runs occurred at
-different times; this is a portfolio comparison across runs, not an
+different times; this is a descriptive comparison across runs, not an
 independent randomized production experiment. V4 controlled evidence
 collection is a major contributor to every model's required-tool grade.
 
@@ -86,8 +97,8 @@ hypothesis—reliability per dollar is often determined by *system design*,
 not model size alone—remains plausible. It has **not** been demonstrated
 for real customers, unseen incident distributions, or total cost to serve.
 
-Before an actual deployment decision: independently adjudicate the queue
-action policy, measure repeated-run uncertainty, test genuinely unseen
+Before an actual deployment decision: independently validate the
+owner-defined V2 queue policy, measure repeated-run uncertainty, test genuinely unseen
 tickets, include diagnostic network time/cost and judge/escalation burden,
 evaluate severity-weighted misdiagnoses, and define human handoff. Avoid
 more prompt tuning against these already-studied 50 tickets.
