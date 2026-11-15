@@ -52,3 +52,26 @@ def grade_labels(ticket: Ticket, output: Diagnosis | None) -> dict:
 
 def combined_solve(tool_grade: dict, label_grade: dict, judge_grade: dict | None = None) -> bool:
     return bool(tool_grade["pass"] and label_grade["pass"] and (judge_grade is None or judge_grade["pass"]))
+
+def audit_queue_actions(ticket: Ticket, output: Diagnosis | None) -> dict:
+    """Explain queue action labels without modifying the original strict grader.
+
+    The frozen dataset has two saturated-queue templates with near-identical
+    evidence, but only one requires retry_with_backoff as a secondary action.
+    This report highlights secondary-action misses for human policy adjudication.
+    """
+    if ticket.category != "queue":
+        return {"applicable": False}
+    required = set(ticket.expected["required_actions"])
+    observed = set(output.recommended_actions) if output is not None else set()
+    secondary = "retry_with_backoff" in required
+    return {
+        "applicable": True,
+        "primary_tune_concurrency_present": "tune_concurrency" in observed,
+        "secondary_retry_required_by_label": secondary,
+        "secondary_retry_present": "retry_with_backoff" in observed,
+        "missing_required_actions": sorted(required - observed),
+        "policy_review_candidate": bool(secondary and "retry_with_backoff" not in observed
+                                        and "tune_concurrency" in observed),
+        "note": "Advisory only; the frozen strict grade_labels / combined_solve are unchanged.",
+    }
