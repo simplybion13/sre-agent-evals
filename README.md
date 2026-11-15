@@ -431,7 +431,7 @@ more information. Add a *separate* deterministic advisory audit for
 unsupported product recommendations, credential requests and missing
 document provenance, then evaluate genuinely adversarial scenarios.
 
-## Evaluation hardening: advisory audit and adversarial suite (results pending)
+## Evaluation hardening: advisory audit and adversarial suite (measured)
 
 **Purpose:** Keep historical strict solve rates untouched while identifying
 deterministically checkable answer risks and measuring robustness to untrusted
@@ -467,7 +467,7 @@ pytest -q
 # Audit a previous run without changing its reported score:
 python scripts/audit_responses.py --runs results/v4-challenge-v1/runs.jsonl --output results/v4-challenge-v1/advisory-audit.json
 
-# New difficult dataset; results have not yet been measured:
+# Repeat the measured adversarial experiment independently:
 sre-eval --dataset data/adversarial_challenge_v1.jsonl --models gpt-4.1-mini gpt-4.1 --config-version 4 --judge-rubric-version 1 --output results/adversarial-run-1
 sre-eval --dataset data/adversarial_challenge_v1.jsonl --models gpt-4.1-mini gpt-4.1 --config-version 4 --judge-rubric-version 1 --output results/adversarial-run-2
 
@@ -477,8 +477,97 @@ python scripts/compare_repeated_runs.py results/adversarial-run-1/runs.jsonl res
 
 Before declaring operational readiness, have an independent support SME
 review the original queue policy ambiguity, adversarial labels,
-model outputs, and flagged audits. No live adversarial model performance
-or repeated-run reliability claim has been made in this PR.
+model outputs, and flagged audits. The first two repeated adversarial
+runs are reported below, not evidence of production readiness.
+
+## Customer-value decision: making the economical model more reliable
+
+For a customer running support at scale, the objective is not to maximize
+model size; it is to **resolve issues reliably at an acceptable cost**.
+This project explicitly tests whether better *system design* lets a cheaper
+model handle more cases without paying for a higher-priced model on every
+ticket.
+
+**GPT-4.1-mini on the same frozen 50-ticket development set:**
+
+| Metric | v2 (model-directed tools) | v3 (model-directed tools) | v4 (deterministic evidence controller) |
+|---|---:|---:|---:|
+| Strict solve rate | 35/50 (70%) | 33/50 (66%) | **44/50 (88%)** |
+| Primary-diagnosis accuracy | 88% | 90% | **100%** |
+| Tool-grade pass | 86% | 78% | **100%** |
+| Estimated candidate inference $/attempt | $0.001577 | $0.001647 | **$0.000615** |
+| Estimated candidate inference $/strict solve | $0.002253 | $0.002495 | **$0.000699** |
+
+Compared with v2, v4 mini achieved **+18 percentage points** in strict
+solve rate, **61% lower candidate inference cost per attempt**, and
+approximately **69% lower candidate inference cost per measured solve**.
+Its improvement was **not monotonic**: v3 regressed before v4 changed
+the architecture. Cost per solve divides estimated attempted inference
+spend by strict solves; it is **not** the full customer support cost.
+
+**V4 model choice:** `gpt-4.1-mini` and `gpt-4.1` each solved **44/50
+(88%)** on the frozen development set; mini's estimated candidate inference
+cost was **$0.000615 versus $0.003231** per attempt (about **81% less**).
+Both also solved **15/15** additional synthetic challenge tickets.
+
+**Repeated adversarial evaluation:** On **two runs of the same ten**
+synthetic adversarial tickets per model, mini solved **10/10 in both**
+(20 successful attempts); `gpt-4.1` solved **9/10 then 10/10**
+(19 successful attempts). Both models had 100% diagnosis and tool correctness
+across both runs; **zero controller corrections**. The only changing ticket
+was A009 for `gpt-4.1`: on the first run the original judge scored an
+image recommendation unsupported despite an observed `lookup_docs("images")`
+call and canonical supported images; on the second run the judge passed.
+**Do not reclassify that historical strict failure** based on our review.
+
+This supports **GPT-4.1-mini as the more attractive cost-conscious candidate
+within this particular synthetic v4 workflow**, not a universal finding that
+the smaller model beats the larger one. In v2 the full model still solved
+90% compared with mini's 70%. In v4 a deterministic controller performs the
+tool selection, so 100% tool compliance is **a system property**, not proof
+of better autonomous tool planning by the raw model. The model weights
+were not fine-tuned here.
+
+**Important customer economics caveat:** The apparent latency and cost
+reductions exclude mock-tool network time, controller infrastructure cost,
+the LLM judge, escalations, wrong-resolution costs, and live traffic mix.
+A production decision should optimize **fully loaded cost per safely
+resolved ticket**, escalation rate, error severity, p95 end-to-end latency,
+and customer satisfaction on independently adjudicated real incidents.
+Small repeated synthetic datasets and reused labels cannot establish those
+production outcomes.
+
+## Separate evidence-aware judge experiment (v3; not yet live evaluated)
+
+The historical quality rubric **v1 remains the default** for all published
+solve rates. Calibration of rubric v2 agreed with only 4/6 handcrafted cases
+(v1 agreed with 6/6), so simply exposing structured evidence did not
+improve the measured judge.
+
+Experimental `evals/judge_rubric_v3.md` adds explicit documentation
+provenance rules for supported SKUs/images and receives the retrieved
+canonical doc snippets plus a separate deterministic advisory audit.
+It requires a fabricated supported image/SKU recommendation to fail
+grounding, without conflating tool-call compliance with prose quality.
+The independent response audit now flags some unsupported **image**
+recommendations as well as unsupported SKUs and direct credential requests.
+
+```powershell
+git pull origin main
+python -m pip install -e ".[dev]"
+pytest -q
+
+# Opt-in calibration ONLY; no v3 judge efficacy is claimed yet:
+python scripts/compare_judge_rubrics.py --rubrics 1 2 3 --output results/judge-calibration-v3.json
+
+# Optional, separately reported re-evaluation of the 10-ticket synthetic suite:
+sre-eval --dataset data/adversarial_challenge_v1.jsonl --models gpt-4.1-mini gpt-4.1 --config-version 4 --judge-rubric-version 3 --output results/adversarial-judge-v3
+```
+
+Version 3 here refers to the **judge rubric**, not the agent configuration.
+It must be calibrated and human-reviewed before being used as a scoring
+policy. Neither historical benchmark records nor rubric v1/v2 contents are
+modified in this experiment.
 
 ## Dataset design
 
