@@ -17,15 +17,15 @@ def load_contract(version: int) -> dict:
 
 
 def test_prompt_and_tool_contract_are_selected_as_a_pair():
-    for version in (1, 2, 3):
+    for version in (1, 2, 3, 4):
         prompt, tools = config_paths(version)
         assert prompt.exists() and tools.exists()
         assert f"/v{version}/" in prompt.as_posix()
         assert f"/v{version}/" in tools.as_posix()
         assert validate_tool_contract(load_contract(version)) == version
-    assert DEFAULT_CONFIG_VERSION == 3
+    assert DEFAULT_CONFIG_VERSION == 4
     with pytest.raises(ValueError, match="Unsupported"):
-        config_paths(4)
+        config_paths(5)
 
 
 def test_v1_remains_a_free_text_baseline():
@@ -70,9 +70,12 @@ def test_sdk_exposes_enum_only_for_v2():
     # This test constructs agents offline; it never invokes the API.
     from sre_agent_evals.agent import build_agent
 
-    for version in (1, 2, 3):
+    for version in (1, 2, 3, 4):
         prompt, tools = config_paths(version)
         agent = build_agent("gpt-4.1-mini", prompt_path=prompt, tools_path=tools)
+        if version == 4:
+            assert agent.tools == []  # preflight controller does the tool calls
+            continue
         lookup = next(tool for tool in agent.tools if tool.name == "lookup_docs")
         schema = lookup.params_json_schema
         # SDK/Pydantic may represent the enum inline or behind a $ref.
