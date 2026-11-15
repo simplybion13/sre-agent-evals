@@ -564,6 +564,20 @@ python scripts/compare_judge_rubrics.py --rubrics 1 2 3 --output results/judge-c
 sre-eval --dataset data/adversarial_challenge_v1.jsonl --models gpt-4.1-mini gpt-4.1 --config-version 4 --judge-rubric-version 3 --output results/adversarial-judge-v3
 ```
 
+To examine the **same saved** model response instead of generating a
+different response, run an isolated judge-only replay (A009 is the observed
+variable-judge ticket):
+
+```powershell
+python scripts/rejudge_runs.py --runs results/adversarial-run-1/runs.jsonl --dataset data/adversarial_challenge_v1.jsonl --rubric 3 --ticket A009 --candidate-model gpt-4.1 --output results/a009-judge-v3.json
+```
+
+The replay preserves the original strict solved flag, original judge grade,
+and saved response; its output separately records the new judge assessment
+and judge token usage. This tests **judge stability**, not candidate
+performance. The calibration CLI reports disagreements without a failing
+exit code by default; pass `--strict` to fail on any disagreement.
+
 Version 3 here refers to the **judge rubric**, not the agent configuration.
 It must be calibrated and human-reviewed before being used as a scoring
 policy. Neither historical benchmark records nor rubric v1/v2 contents are
