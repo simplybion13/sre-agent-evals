@@ -1,4 +1,4 @@
-# Current-model validation — GPT-6 Luna versus GPT-6.1 Sol
+# Current-model validation: GPT-6 Luna versus GPT-6.1 Sol
 
 **Run date:** 2026-11-15 (UTC). **Status:** completed, exploratory synthetic development benchmark.
 
@@ -93,8 +93,8 @@ collection is a major contributor to every model's required-tool grade.
 The narrow, supported observation is that **the economical current model
 matched the stronger current model on these 50 synthetic tickets at much
 lower estimated candidate inference spend**. The original product
-hypothesis—reliability per dollar is often determined by *system design*,
-not model size alone—remains plausible. It has **not** been demonstrated
+hypothesis remains plausible: reliability per dollar is often determined
+by *system design*, not model size alone. It has **not** been demonstrated
 for real customers, unseen incident distributions, or total cost to serve.
 
 Before an actual deployment decision: independently validate the

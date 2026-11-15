@@ -1,6 +1,6 @@
 # sre-agent-evals
 
-**An AI-assisted SRE support agent evaluated as a product—not just a chatbot demo.**
+**A CI/CD build-pool support agent, evaluated like a product rather than demoed like a chatbot.**
 
 **Finding:** Moving evidence collection from model-selected tools into a bounded,
 read-only controller raised GPT-4.1-mini's strict solve rate from **70% to
@@ -14,10 +14,10 @@ inference spend.
 All five remaining strict failures per model were the same secondary queue
 action-label disagreement. The original **90%** stays visible, with an
 explicitly separate, post-hoc V2 policy replay of **50/50** for each model.
-These are mocked, iterated development fixtures—not production validation
+These are mocked, iterated development fixtures, not production validation
 or a statistically significant model ranking.
 
-## Current-model validation — November 2026 (50 tickets completed)
+## Current-model validation: November 2026 (50 tickets completed)
 
 A second controlled comparison evaluated the **current-model pair under the
 same V4 architecture**: economical `gpt-6-luna` versus higher-priced
@@ -50,7 +50,7 @@ for a healthy pool that is out of free slots but has available backend
 capacity and organization quota, `tune_concurrency` is mandatory and
 `retry_with_backoff` is optional. Applying that policy to the **saved**
 outputs gives **50/50 (100%) for each model in a post-hoc V2-policy
-rescore**—not new model results, and not independent validation.
+rescore**. These are not new model results or independent validation.
 Historical 90% results remain unchanged.
 
 | Historical comparison (single synthetic development runs) | Strict solved | Est. candidate inference / ticket |
@@ -76,7 +76,7 @@ sre-eval --models gpt-6-luna gpt-6.1-sol --config-version 4 --judge-rubric-versi
 sre-eval --models gpt-6-luna gpt-6.1-sol --config-version 4 --judge-rubric-version 1 --output results/current-model-50
 ```
 
-## Executive summary — better customer outcomes from the cheaper model
+## Executive summary: better customer outcomes from the cheaper model
 
 **Product question:** Can better agent architecture make a lower-cost model reliable enough to avoid upgrading every customer support ticket to a larger LLM?
 
@@ -176,9 +176,9 @@ sre-eval --models gpt-4.1-mini gpt-4.1 --output results/full
 
 The runner prints a single comparative table and saves:
 
-- `report.md` — readable summary table and run metadata
-- `summary.csv` — one row per model, all metrics side-by-side
-- `runs.jsonl` — one row per ticket and model, including traces of tool calls, labels, quality grades, errors, tokens and latency
+- `report.md`: readable summary table and run metadata
+- `summary.csv`: one row per model, all metrics side-by-side
+- `runs.jsonl`: one row per ticket and model, including traces of tool calls, labels, quality grades, errors, tokens and latency
 
 Pass `--no-judge` for a cheaper **deterministic-only** evaluation. That changes the meaning of solve rate, so never compare runs with and without a judge as if they are equivalent. The default judge model is `gpt-4.1`, configurable with `--judge-model`. The judge adds API spend; it is excluded from the candidate's per-ticket cost/latency to avoid confusing *evaluation overhead* with *serving cost*. Judge token usage is saved in JSONL but is not priced in the summary.
 
@@ -256,7 +256,7 @@ or production readiness. See the full v2 scorecard below for its independently
 measured 50-ticket metrics. V3 was evaluated under the original rubric. Both full-run scores were lower
 than v2; stochastic variation and development-set overfitting remain limitations.
 
-## Measured v2 benchmark — November 15, 2026
+## Measured v2 benchmark: November 15, 2026
 
 **Source:** locally executed `sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 2 --output results/v2-full`, uploaded aggregate report and 100 per-run JSONL records, reviewed before publication. Both models used the same 50 frozen synthetic tickets, v2 prompt/tool contract, original grading rules and `gpt-4.1` judge. V3 results are documented separately below. Estimates exclude judge inference cost and operational escalation costs.
 
@@ -331,7 +331,7 @@ development dataset. New unseen, human-adjudicated holdout incidents, repeated
 model runs and judge agreement checks are needed for defensible customer
 recommendations. The v2 scorecard above remains historical; v3 results follow below.
 
-## Measured v3 regression — November 15, 2026
+## Measured v3 regression: November 15, 2026
 
 **Source:** uploaded 50-ticket v3 `report.md`, `summary.csv` and
 `runs.jsonl` (100 candidate runs), evaluated with
@@ -408,7 +408,7 @@ JSONL before drawing conclusions. V4 was evaluated on the same 50-ticket develop
 results and limitations are below. Use separately developed, human-reviewed
 unseen incidents before making production claims.
 
-## Measured v4 benchmark — November 15, 2026
+## Measured v4 benchmark: November 15, 2026
 
 **Source:** uploaded `report.md`, `summary.csv`, and 100 candidate records
 in `runs.jsonl` from a full 50-ticket/model run using
@@ -490,7 +490,7 @@ See `evals/queue_action_policy_proposal.md` for the unresolved
 retry/backoff labeling question. The policy is **proposed, not enacted**;
 no historical grader, label, dataset, or benchmark score has been altered.
 
-## Measured V4 challenge and judge calibration — November 15, 2026
+## Measured V4 challenge and judge calibration: November 15, 2026
 
 **Source:** uploaded 15-ticket/model `report.md`, `summary.csv` and
 `runs.jsonl` (30 candidate runs), plus `judge-calibration.json`
@@ -642,7 +642,7 @@ solve rates. On the *latest* six-case handcrafted calibration run with GPT-4.1
 as judge, V1 agreed with **6/6** expected decisions, V2 with **5/6** and
 experimental **V3 with 6/6**. On a *previous* run of the same six cases,
 V2 agreed with only **4/6**, showing that judge decisions can vary.
-These are small, hand-authored calibration checks—not reliable estimates
+These are small, hand-authored calibration checks, not reliable estimates
 of general judge accuracy or evidence of production-grade calibration.
 
 In a judge-only replay of **A009 / GPT-4.1** using the *unchanged saved
@@ -728,7 +728,7 @@ The following values are from the **measured v2 50-ticket run**, not illustrativ
 | Model | Tickets | Solve % | Tool pass % | Diagnosis % | Avg latency s | P95 s | Avg in tokens | Avg out tokens | Avg total tokens | Avg $/ticket |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | gpt-4.1-mini | 50 | 70.0 | 86.0 | 88.0 | 3.41 | 4.68 | 3,068 | 219 | 3,287 | $0.001577 |
-| gpt-4.1 | 50 | 90.0 | 98.0 | 100.0 | 3.21 | 4.22 | 3,230 | 215 | 3,445 | $0.008181 | — |
+| gpt-4.1 | 50 | 90.0 | 98.0 | 100.0 | 3.21 | 4.22 | 3,230 | 215 | 3,445 | $0.008181 | N/A |
 
 Solve rate is `all_passing_tickets / all_attempted_tickets`; API exceptions count as failures. Latency includes candidate agent model and tool round trips, **not** judge calls. Token counts are aggregated by the Agents SDK across the entire agent run. Average cost is `(input_tokens × input_rate + output_tokens × output_rate) / 1,000,000`, using `configs/pricing.json`. Prices are configurable snapshots, **not invoice-grade charges** (cached tokens, volume tiers, tools and other charges are not modeled). Verify pricing and model availability before running.
 
@@ -761,8 +761,8 @@ Add harder holdout incidents (multiple simultaneous causes and misleading custom
 
 ## References
 
-- [OpenAI Agents SDK — tools](https://openai.github.io/openai-agents-python/tools/)
-- [OpenAI Agents SDK — token usage](https://openai.github.io/openai-agents-python/usage/)
+- [OpenAI Agents SDK: tools](https://openai.github.io/openai-agents-python/tools/)
+- [OpenAI Agents SDK: token usage](https://openai.github.io/openai-agents-python/usage/)
 - [OpenAI API pricing](https://platform.openai.com/docs/pricing)
 
 MIT licensed. All identifiers, logs, organizations and incidents are synthetic.
