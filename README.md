@@ -84,6 +84,55 @@ The runner prints a single comparative table and saves:
 
 Pass `--no-judge` for a cheaper **deterministic-only** evaluation. That changes the meaning of solve rate, so never compare runs with and without a judge as if they are equivalent. The default judge model is `gpt-4.1`, configurable with `--judge-model`. The judge adds API spend; it is excluded from the candidate's per-ticket cost/latency to avoid confusing *evaluation overhead* with *serving cost*. Judge token usage is saved in JSONL but is not priced in the summary.
 
+## Versioned agent experiment: constrained documentation topics
+
+The original v1 prompt and tool contract are preserved verbatim in
+`configs/prompts/v1/system.md` and `configs/tools/v1/tools.yaml`.
+A five-ticket *v1 smoke test* observed 100% primary diagnosis accuracy for both
+candidates, but tool correctness was 20% for `gpt-4.1-mini` and 40% for
+`gpt-4.1`. Most misses involved documentation lookups. Those are **five-ticket
+baseline observations only**, not broad reliability claims.
+
+The v2 experiment makes three targeted changes:
+
+- `configs/tools/v2/tools.yaml` defines seven canonical documentation topics.
+  `DocTopic` is a Python `Literal`, so the Agents SDK exposes an **enum** instead
+  of an unrestricted string. The v2 manifest and runtime annotation must match.
+- `configs/prompts/v2/system.md` explicitly maps common issue categories to
+  the required evidence and canonical docs topics. It requires the appropriate
+  remediation actions while retaining read-only, tenant-isolation and
+  uncertainty safeguards.
+- Offline regression tests check contract parity, SDK tool schema, invalid
+  topics, version pairing, and preservation of v1. **The dataset, expected
+  labels, graders and judge rubric are unchanged**, so comparisons retain the
+  same success criteria.
+
+The project defaults to v2 for new runs. Use `--config-version 1` to reproduce
+the baseline configuration without editing any source files:
+
+```powershell
+pytest -q
+sre-agent --ticket T003 --model gpt-4.1-mini --config-version 1
+sre-agent --ticket T003 --model gpt-4.1-mini --config-version 2
+
+# First, compare five tickets at the same judge settings.
+sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 1 --limit 5 --output results/v1-smoke
+sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 2 --limit 5 --output results/v2-smoke
+
+# Then compare all 50 when the smoke tests work.
+sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 1 --output results/v1-full
+sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 2 --output results/v2-full
+```
+
+The Markdown reports include `config_version`, prompt path and tool contract
+path so findings can be attributed to the correct configuration. The
+`results/` directory remains gitignored; publish only reviewed aggregates.
+A valid improvement claim requires **fresh live evaluations** and a check of
+failure cases, not just passing unit tests. Prompt/version experiments on the
+same five tickets may overfit; add unseen holdout incidents before describing
+production generalization. The new enum constrains tool arguments, but it does
+not independently prove that the agent reads the right docs or follows them.
+
 ## Dataset design
 
 50 deterministic, synthetic tickets (10 scenario templates × 5 wording/number variations). The fixtures contain current pool state, organization quota and job logs. Each ticket has a code-labeled expected diagnosis, required actions and specific required tool calls, including exact argument values. Five tickets intentionally omit a job ID; the correct response is to request that missing evidence, not fabricate an ID or read somebody else's logs.
