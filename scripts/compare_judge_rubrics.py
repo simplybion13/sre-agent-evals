@@ -1,7 +1,7 @@
 """Opt-in side-by-side judge calibration; costs real API calls.
 
 This is a review aid, not proof that rubric v2 is calibrated. Judge v1 is
-historically frozen and gets its original input; rubric v2 sees structured
+historically frozen and gets its original input; experimental rubrics v2/v3 see structured
 answers and canonical docs only if the candidate actually looked them up.
 """
 import argparse
@@ -102,14 +102,17 @@ async def run(args):
     else:
         print(json.dumps(out, indent=2))
     if not all(r["agreement"] for r in rows):
-        raise SystemExit("Judge disagreement: review results; do not claim successful calibration")
+        print("Judge disagreement(s) detected; review the report, do not claim calibration success.")
+        if args.strict:
+            raise SystemExit(1)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", default="gpt-4.1")
-    parser.add_argument("--rubrics", type=int, nargs="+", choices=(1, 2), default=[1, 2])
+    parser.add_argument("--rubrics", type=int, nargs="+", choices=(1, 2, 3), default=[1, 2, 3])
     parser.add_argument("--output", default="results/judge-calibration.json")
+    parser.add_argument("--strict", action="store_true", help="Exit nonzero on any judge disagreement")
     asyncio.run(run(parser.parse_args()))
 
 

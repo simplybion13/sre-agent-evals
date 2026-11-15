@@ -7,7 +7,7 @@ RUBRIC = ROOT / "evals" / "judge_rubric.md"
 
 DEFAULT_CONFIG_VERSION = 4
 SUPPORTED_CONFIG_VERSIONS = (1, 2, 3, 4)
-JUDGE_RUBRICS = {1: ROOT / 'evals' / 'judge_rubric.md', 2: ROOT / 'evals' / 'judge_rubric_v2.md'}
+JUDGE_RUBRICS = {1: ROOT / 'evals' / 'judge_rubric.md', 2: ROOT / 'evals' / 'judge_rubric_v2.md', 3: ROOT / 'evals' / 'judge_rubric_v3.md'}
 
 
 def config_paths(version: int = DEFAULT_CONFIG_VERSION) -> tuple[Path, Path]:
