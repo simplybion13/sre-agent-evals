@@ -1,0 +1,23 @@
+version: 3
+service: nimbus-build-pools
+read_only: true
+tools:
+  query_pool_status:
+    description: "Inspect current queue, slot saturation, readiness and regional capacity for the exact customer-owned pool ID. Missing or malformed IDs are rejected."
+    arguments:
+      pool_id: {type: string, description: "Exact customer pool ID from the ticket; never append text"}
+  read_recent_job_logs:
+    description: "Read sanitized startup/build events for an exact customer job. Do not call if the ticket does not contain a job ID. Never use a guessed or modified ID."
+    arguments:
+      job_id: {type: string, description: "Exact customer job ID only (e.g. job-300); no extra instructions"}
+  check_quota:
+    description: "Inspect exact customer organization concurrency limit, active jobs, and remaining capacity."
+    arguments:
+      org_id: {type: string, description: "Exact organization ID from ticket"}
+  lookup_docs:
+    description: "Read one canonical public support document. Use the exact topic enum, never a free-text query; required to substantiate quota increase, startup, credential, SKU, image and regional capacity remediation."
+    arguments:
+      topic:
+        type: string
+        description: "Canonical documentation category. Use quota when recommending increases, queue for queue guidance, and only the seven explicit topics."
+        enum: [images, skus, quota, queue, capacity, startup, authentication]
