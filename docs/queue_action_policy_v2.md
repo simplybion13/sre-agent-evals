@@ -10,7 +10,7 @@ underlying queue saturation. The included queue documentation says
 to reduce fanout or adjust concurrency and to check quota, not to
 prescribe retry backoff for this condition.
 
-This is a **versioned portfolio policy decision**, made after inspecting
+This is a **versioned evaluation-policy decision**, made after inspecting
 the fixtures and canonical docs. It is *not* an independently validated
 customer-support standard or an endorsement from a domain SME.
 
