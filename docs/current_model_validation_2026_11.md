@@ -84,7 +84,7 @@ should assess the revised rule before operational adoption.
 
 The single-ticket difference between model generations is not evidence of
 statistical superiority. The historical and modern runs occurred at
-different times; this is a portfolio comparison across runs, not an
+different times; this is a descriptive comparison across runs, not an
 independent randomized production experiment. V4 controlled evidence
 collection is a major contributor to every model's required-tool grade.
 
