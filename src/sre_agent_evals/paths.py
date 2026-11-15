@@ -5,8 +5,9 @@ DATA = ROOT / "data" / "tickets.jsonl"
 PRICING = ROOT / "configs" / "pricing.json"
 RUBRIC = ROOT / "evals" / "judge_rubric.md"
 
-DEFAULT_CONFIG_VERSION = 2
-SUPPORTED_CONFIG_VERSIONS = (1, 2)
+DEFAULT_CONFIG_VERSION = 3
+SUPPORTED_CONFIG_VERSIONS = (1, 2, 3)
+JUDGE_RUBRICS = {1: ROOT / 'evals' / 'judge_rubric.md', 2: ROOT / 'evals' / 'judge_rubric_v2.md'}
 
 
 def config_paths(version: int = DEFAULT_CONFIG_VERSION) -> tuple[Path, Path]:
