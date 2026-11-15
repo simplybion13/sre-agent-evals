@@ -139,14 +139,14 @@ This is an **iteration log**, not an apples-to-apples leaderboard across differe
 sample sizes. Each figure below is a measured solve rate for a given candidate
 model; v1 and v2 smoke tests contain the *same first five* synthetic tickets
 per model, while the v2 full evaluation covers all 50. No v1 full-set
-benchmark has been run, and no v3 outcome is claimed.
+benchmark has been run. The v3 measurements below are a single 50-ticket run.
 
 | Configuration / dataset | GPT-4.1-mini solved | GPT-4.1 solved | Purpose |
 |---|---:|---:|---|
 | **v1 baseline**, 5-ticket smoke | 1/5 (20%) | 2/5 (40%) | Identify early tool-call reliability failures |
 | **v2**, same 5-ticket smoke | 4/5 (80%) | 5/5 (100%) | Check constrained docs topics and evidence policy |
 | **v2**, full 50 tickets | 35/50 (70%) | 45/50 (90%) | Characterize failure types and model tradeoffs |
-| **v3** | Not measured | Not measured | Proposed quota/missing-evidence/guardrail changes |
+| **v3**, full 50 tickets | 33/50 (66%) | 41/50 (82%) | Observed regression despite targeted improvements |
 
 The v1 → v2 change on the same five tickets coincided with better tool-pass
 rates (GPT-4.1-mini 20% → 80%; GPT-4.1 40% → 100%), with primary diagnosis
@@ -154,12 +154,12 @@ accuracy 100% for both models in both smoke runs. This is a development-set
 observation, **not evidence of a 60-point improvement on the full 50 tickets**.
 Five tickets and templated variants are inadequate to establish generalization
 or production readiness. See the full v2 scorecard below for its independently
-measured 50-ticket metrics. Validate v3 using the same fixed grading policy
-and new unseen holdout cases before claiming gains.
+measured 50-ticket metrics. V3 was evaluated under the original rubric. Both full-run scores were lower
+than v2; stochastic variation and development-set overfitting remain limitations.
 
 ## Measured v2 benchmark — November 15, 2026
 
-**Source:** locally executed `sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 2 --output results/v2-full`, uploaded aggregate report and 100 per-run JSONL records, reviewed before publication. Both models used the same 50 frozen synthetic tickets, v2 prompt/tool contract, original grading rules and `gpt-4.1` judge. **No v3 results are available.** Estimates exclude judge inference cost and operational escalation costs.
+**Source:** locally executed `sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 2 --output results/v2-full`, uploaded aggregate report and 100 per-run JSONL records, reviewed before publication. Both models used the same 50 frozen synthetic tickets, v2 prompt/tool contract, original grading rules and `gpt-4.1` judge. V3 results are documented separately below. Estimates exclude judge inference cost and operational escalation costs.
 
 | Model | Solved | Tool-pass | Primary-diagnosis | Mean latency | P95 latency | Mean tokens | Est. $/attempt | Est. $/solve* |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -190,7 +190,7 @@ Results are stochastic; use multiple seeds/runs and holdout tickets before adopt
 
 The original `v1` and `v2` prompt and tool contract files remain unmodified.
 The **v3** change targets patterns observed in the measured 50-ticket v2
-development benchmark; **no v3 solve-rate or cost improvement is claimed**.
+development benchmark; **the completed v3 benchmark regressed on strict solve rate**.
 
 - **Quota:** Require a quota docs read with the exact `quota` topic before
   recommending a quota increase. Preserve the separate org/pool evidence.
@@ -230,7 +230,34 @@ sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 3 --judge-rubric-version
 **Experiment caveat:** The prompt is being refined against this synthetic
 development dataset. New unseen, human-adjudicated holdout incidents, repeated
 model runs and judge agreement checks are needed for defensible customer
-recommendations. The 50-ticket results published above remain v2-only.
+recommendations. The v2 scorecard above remains historical; v3 results follow below.
+
+## Measured v3 regression — November 15, 2026
+
+**Source:** uploaded 50-ticket v3 `report.md`, `summary.csv` and
+`runs.jsonl` (100 candidate runs), evaluated with
+`--config-version 3 --judge-rubric-version 1`.
+The same frozen dataset, models, strict grading and original judge rubric
+were used for v2 and v3. These are **single-run synthetic development-set
+observations**, not a statistically established regression on unseen incidents.
+
+| Model | V2 solved | V3 solved | Difference | V3 tool pass | V3 diagnosis | V3 mean latency | V3 estimated $/ticket |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `gpt-4.1-mini` | 35/50 (70%) | 33/50 (66%) | −4 pp | 78% | 90% | 3.65s | $0.001647 |
+| `gpt-4.1` | 45/50 (90%) | 41/50 (82%) | −8 pp | 92% | 100% | 3.27s | $0.008139 |
+
+Observed: `gpt-4.1-mini` skipped quota docs in all five quota
+tickets and mislabeled all five unidentified failures as
+`healthy_or_transient`; four startup tickets missed startup docs.
+`gpt-4.1` correctly identified all primary causes but omitted
+`retry_with_backoff` on five special queue variants, missed pool status
+on two startup incidents and overcalled tools on two SKU incidents.
+It did improve missing-ID handling from four to five correct solves.
+
+**Decision:** v2 remains the best measured version on strict solve rate.
+v3 is an informative unsuccessful iteration. Keep v1–v3 and the strict
+grader intact while testing deterministic v4 evidence collection;
+independent holdout evaluation is still required.
 
 ## Dataset design
 
