@@ -356,6 +356,44 @@ original and improved rubric, then evaluate a separately authored challenge
 set. No judge-calibration agreement or challenge-set model performance is
 claimed until those runs are actually executed.
 
+## Challenge-set and judge calibration workflow (not yet evaluated)
+
+To avoid repeatedly optimizing on the 50-ticket development data, this PR
+adds `data/holdout_challenge_v1.jsonl` with **15 separately authored synthetic
+cases** across nine incident categories. They use different support-request
+wording and independently specified observation/expected-action records.
+This is an *additional challenge set*, not a statistically independent
+real-world distribution and not a blind external benchmark; scenarios were
+authored after reviewing earlier failure patterns. No model outcomes for
+these cases have been measured yet. Do not use results to revise prompts and
+then continue calling the same cases unseen.
+
+Run after merging this PR:
+
+```powershell
+git pull origin main
+python -m pip install -e ".[dev]"
+pytest -q
+
+# Evaluate the unchanged v4 system on 15 challenge tickets per model.
+sre-eval --dataset data/holdout_challenge_v1.jsonl --models gpt-4.1-mini gpt-4.1 --config-version 4 --judge-rubric-version 1 --output results/v4-challenge-v1
+
+# Separate live calibration: six handcrafted correct, wrong and unsafe cases
+# are judged under both historical rubric v1 and experimental rubric v2.
+python scripts/compare_judge_rubrics.py --output results/judge-calibration.json
+```
+
+Calibration results are **not yet known**. The experimental rubric v2 now
+receives actual canonical documentation text for *observed* `lookup_docs`
+calls, rather than a call name alone. Rubric v1's inputs and logic are
+unchanged, so historical strict solve rates are preserved. Calibrating
+against one known false-negative example (T044) risks overfitting the judge:
+review a broader blind adjudicated set before concluding calibration improved.
+
+See `evals/queue_action_policy_proposal.md` for the unresolved
+retry/backoff labeling question. The policy is **proposed, not enacted**;
+no historical grader, label, dataset, or benchmark score has been altered.
+
 ## Dataset design
 
 50 deterministic, synthetic tickets (10 scenario templates × 5 wording/number variations). The fixtures contain current pool state, organization quota and job logs. Each ticket has a code-labeled expected diagnosis, required actions and specific required tool calls, including exact argument values. Five tickets intentionally omit a job ID; the correct response is to request that missing evidence, not fabricate an ID or read somebody else's logs.
