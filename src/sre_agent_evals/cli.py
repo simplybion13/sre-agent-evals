@@ -17,13 +17,24 @@ async def run_one(ticket_id: str, model: str, config_version: int):
         raise SystemExit(f"Unknown ticket ID: {ticket_id}")
     prompt_path, tools_path = config_paths(config_version)
     ctx = TicketContext(ticket)
+    model_input = ticket.message
+    bundle = None
+    if config_version == 4:
+        from .orchestration import collect_evidence, enforce_missing_job_boundary
+        bundle = collect_evidence(ticket)
+        ctx.tool_calls.extend(bundle.calls)
+        model_input = bundle.model_input(ticket.message)
     result = await Runner.run(
         build_agent(model, prompt_path=prompt_path, tools_path=tools_path),
-        ticket.message,
+        model_input,
         context=ctx,
         max_turns=8,
     )
-    print(result.final_output.model_dump_json(indent=2))
+    output = result.final_output
+    if bundle is not None:
+        output, audit = enforce_missing_job_boundary(ticket, bundle, output)
+        print("Controller safety gate:", audit)
+    print(output.model_dump_json(indent=2))
     print("\nObserved tool calls:", ctx.tool_calls)
 
 

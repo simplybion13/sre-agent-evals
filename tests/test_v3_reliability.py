@@ -15,12 +15,12 @@ from sre_agent_evals.security import guarded_lookup
 
 
 def test_all_versions_and_read_only_contracts():
-    for version in (1, 2, 3):
+    for version in (1, 2, 3, 4):
         prompt, tool_file = config_paths(version)
         assert prompt.exists() and tool_file.exists()
         assert validate_tool_contract(yaml.safe_load(tool_file.read_text())) == version
     with pytest.raises(ValueError):
-        config_paths(4)
+        config_paths(5)
 
 
 def test_v3_enum_cannot_drift_from_literal():

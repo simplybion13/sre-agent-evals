@@ -23,18 +23,31 @@ def estimate_cost(model: str, input_tokens: int, output_tokens: int, pricing: di
 
 
 async def evaluate_one(agent, ticket, model: str, judge_client, judge_model: str | None, prices,
-                       rubric_version: int = 1):
+                       rubric_version: int = 1, config_version: int = 3):
     from agents import Runner
     from .agent import TicketContext
     from .judge import judge_answer
     ctx = TicketContext(ticket)
     t0 = time.perf_counter()
     output = None
+    raw_output = None
+    correction = {"applied": False}
     error = None
     input_tokens = output_tokens = 0
     try:
-        result = await Runner.run(agent, ticket.message, context=ctx, max_turns=8)
-        output = Diagnosis.model_validate(result.final_output)
+        if config_version == 4:
+            from .orchestration import collect_evidence, enforce_missing_job_boundary
+            bundle = collect_evidence(ticket)
+            ctx.tool_calls.extend(bundle.calls)
+            model_input = bundle.model_input(ticket.message)
+        else:
+            bundle = None
+            model_input = ticket.message
+        result = await Runner.run(agent, model_input, context=ctx, max_turns=8)
+        raw_output = Diagnosis.model_validate(result.final_output)
+        output = raw_output
+        if bundle is not None:
+            output, correction = enforce_missing_job_boundary(ticket, bundle, raw_output)
         usage = result.context_wrapper.usage
         input_tokens, output_tokens = usage.input_tokens, usage.output_tokens
     except Exception as exc:  # include failures in denominator, not just successful completions
@@ -57,6 +70,9 @@ async def evaluate_one(agent, ticket, model: str, judge_client, judge_model: str
         "expected_diagnosis": ticket.expected["diagnosis"],
         "predicted_diagnosis": output.diagnosis_code if output else None,
         "response": output.model_dump() if output else None,
+        "raw_response": raw_output.model_dump() if raw_output and config_version == 4 else None,
+        "controller_correction": correction if config_version == 4 else None,
+        "tool_call_origin": "deterministic_preflight" if config_version == 4 else "model_tool_calls",
         "tool_calls": ctx.tool_calls, "tool_grade": tool_grade,
         "label_grade": label_grade, "queue_action_audit": audit_queue_actions(ticket, output),
         "judge_grade": judge_grade,
@@ -126,7 +142,8 @@ async def run(args):
         for model in args.models:
             print(f"Evaluating {ticket.id} / {model} ...", flush=True)
             row = await evaluate_one(agent_by_model[model], ticket, model, judge_client, judge_model, prices,
-                                     rubric_version=args.judge_rubric_version)
+                                     rubric_version=args.judge_rubric_version,
+                                     config_version=args.config_version)
             rows.append(row)
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
@@ -139,7 +156,10 @@ async def run(args):
     meta = {"created_at": datetime.now(timezone.utc).isoformat(), "models": args.models,
             "judge_model": judge_model, "judge_rubric_version": args.judge_rubric_version,
             "dataset": args.dataset, "tickets_per_model": len(tickets),
-            "config_version": args.config_version, "prompt_path": str(prompt_path),
+            "config_version": args.config_version,
+            "evidence_collection": "deterministic_preflight" if args.config_version == 4 else "model_tool_calls",
+            "controller_safety_gate": args.config_version == 4,
+            "prompt_path": str(prompt_path),
             "tool_contract_path": str(tools_path),
             "pricing_checked_on": prices["checked_on"],
             "note": "Cost and token columns exclude judge calls; latency measures agent only. Judge usage in runs.jsonl."}

@@ -63,6 +63,8 @@ def build_agent(model: str, prompt_path: Path = PROMPT, tools_path: Path = TOOLS
         name="Nimbus pool support",
         model=model,
         instructions=prompt_path.read_text(encoding="utf-8"),
-        tools=[query_pool_status, read_recent_job_logs, check_quota, lookup_docs],
+        # V4 performs read-only diagnostics in a deterministic
+        # preflight controller. Expose no duplicate tools to the LLM.
+        tools=[] if version == 4 else [query_pool_status, read_recent_job_logs, check_quota, lookup_docs],
         output_type=Diagnosis,
     )

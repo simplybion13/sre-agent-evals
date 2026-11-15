@@ -107,7 +107,7 @@ The v2 experiment makes three targeted changes:
   labels, graders and judge rubric are unchanged**, so comparisons retain the
   same success criteria.
 
-The project defaults to v2 for new runs. Use `--config-version 1` to reproduce
+The project defaults to the newest experimental configuration (currently v4) for new runs. Use `--config-version 1` to reproduce
 the baseline configuration without editing any source files:
 
 ```powershell
@@ -139,14 +139,14 @@ This is an **iteration log**, not an apples-to-apples leaderboard across differe
 sample sizes. Each figure below is a measured solve rate for a given candidate
 model; v1 and v2 smoke tests contain the *same first five* synthetic tickets
 per model, while the v2 full evaluation covers all 50. No v1 full-set
-benchmark has been run, and no v3 outcome is claimed.
+benchmark has been run. The v3 measurements below are a single 50-ticket run.
 
 | Configuration / dataset | GPT-4.1-mini solved | GPT-4.1 solved | Purpose |
 |---|---:|---:|---|
 | **v1 baseline**, 5-ticket smoke | 1/5 (20%) | 2/5 (40%) | Identify early tool-call reliability failures |
 | **v2**, same 5-ticket smoke | 4/5 (80%) | 5/5 (100%) | Check constrained docs topics and evidence policy |
 | **v2**, full 50 tickets | 35/50 (70%) | 45/50 (90%) | Characterize failure types and model tradeoffs |
-| **v3** | Not measured | Not measured | Proposed quota/missing-evidence/guardrail changes |
+| **v3**, full 50 tickets | 33/50 (66%) | 41/50 (82%) | Observed regression despite targeted improvements |
 
 The v1 → v2 change on the same five tickets coincided with better tool-pass
 rates (GPT-4.1-mini 20% → 80%; GPT-4.1 40% → 100%), with primary diagnosis
@@ -154,12 +154,12 @@ accuracy 100% for both models in both smoke runs. This is a development-set
 observation, **not evidence of a 60-point improvement on the full 50 tickets**.
 Five tickets and templated variants are inadequate to establish generalization
 or production readiness. See the full v2 scorecard below for its independently
-measured 50-ticket metrics. Validate v3 using the same fixed grading policy
-and new unseen holdout cases before claiming gains.
+measured 50-ticket metrics. V3 was evaluated under the original rubric. Both full-run scores were lower
+than v2; stochastic variation and development-set overfitting remain limitations.
 
 ## Measured v2 benchmark — November 15, 2026
 
-**Source:** locally executed `sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 2 --output results/v2-full`, uploaded aggregate report and 100 per-run JSONL records, reviewed before publication. Both models used the same 50 frozen synthetic tickets, v2 prompt/tool contract, original grading rules and `gpt-4.1` judge. **No v3 results are available.** Estimates exclude judge inference cost and operational escalation costs.
+**Source:** locally executed `sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 2 --output results/v2-full`, uploaded aggregate report and 100 per-run JSONL records, reviewed before publication. Both models used the same 50 frozen synthetic tickets, v2 prompt/tool contract, original grading rules and `gpt-4.1` judge. V3 results are documented separately below. Estimates exclude judge inference cost and operational escalation costs.
 
 | Model | Solved | Tool-pass | Primary-diagnosis | Mean latency | P95 latency | Mean tokens | Est. $/attempt | Est. $/solve* |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -190,7 +190,7 @@ Results are stochastic; use multiple seeds/runs and holdout tickets before adopt
 
 The original `v1` and `v2` prompt and tool contract files remain unmodified.
 The **v3** change targets patterns observed in the measured 50-ticket v2
-development benchmark; **no v3 solve-rate or cost improvement is claimed**.
+development benchmark; **the completed v3 benchmark regressed on strict solve rate**.
 
 - **Quota:** Require a quota docs read with the exact `quota` topic before
   recommending a quota increase. Preserve the separate org/pool evidence.
@@ -230,7 +230,83 @@ sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 3 --judge-rubric-version
 **Experiment caveat:** The prompt is being refined against this synthetic
 development dataset. New unseen, human-adjudicated holdout incidents, repeated
 model runs and judge agreement checks are needed for defensible customer
-recommendations. The 50-ticket results published above remain v2-only.
+recommendations. The v2 scorecard above remains historical; v3 results follow below.
+
+## Measured v3 regression — November 15, 2026
+
+**Source:** uploaded 50-ticket v3 `report.md`, `summary.csv` and
+`runs.jsonl` (100 candidate runs), evaluated with
+`--config-version 3 --judge-rubric-version 1`.
+The same frozen dataset, models, strict grading and original judge rubric
+were used for v2 and v3. These are **single-run synthetic development-set
+observations**, not a statistically established regression on unseen incidents.
+
+| Model | V2 solved | V3 solved | Difference | V3 tool pass | V3 diagnosis | V3 mean latency | V3 estimated $/ticket |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `gpt-4.1-mini` | 35/50 (70%) | 33/50 (66%) | −4 pp | 78% | 90% | 3.65s | $0.001647 |
+| `gpt-4.1` | 45/50 (90%) | 41/50 (82%) | −8 pp | 92% | 100% | 3.27s | $0.008139 |
+
+Observed: `gpt-4.1-mini` skipped quota docs in all five quota
+tickets and mislabeled all five unidentified failures as
+`healthy_or_transient`; four startup tickets missed startup docs.
+`gpt-4.1` correctly identified all primary causes but omitted
+`retry_with_backoff` on five special queue variants, missed pool status
+on two startup incidents and overcalled tools on two SKU incidents.
+It did improve missing-ID handling from four to five correct solves.
+
+**Decision:** v2 remains the best measured version on strict solve rate.
+v3 is an informative unsuccessful iteration. Keep v1–v3 and the strict
+grader intact while testing deterministic v4 evidence collection;
+independent holdout evaluation is still required.
+
+## Experimental v4: deterministic evidence orchestration (results pending)
+
+**Motivation:** V3 was worse than V2 on the same synthetic 50-ticket
+development benchmark, despite keeping GPT-4.1 primary diagnosis at 100%.
+The next hypothesis is that *tool selection and evidence sufficiency belong in
+bounded, inspectable control flow, not in a larger system prompt*.
+
+V4 is a **composite controller + LLM** experiment, not a mere prompt variant.
+It uses ticket-owned IDs and **observed mock tool results**, never frozen
+expected labels or the hidden scenario category, to collect the needed pool,
+job-log, organization-quota and canonical-documentation evidence.
+It records those calls and passes a sourced observation bundle to the model.
+The model has no additional tool access, limiting duplicative or malformed
+calls. For an unresolved failure with no job ID, a narrowly scoped,
+**audited safety gate** can replace an unsupported "healthy" claim with a
+request for the missing job ID. The raw model answer and the correction
+record are both preserved in `runs.jsonl`.
+
+The existing strict tool/label graders and original LLM judge rubric remain
+unchanged for comparison. **However, preflight controller calls now count as
+tool calls, and the safety gate may modify final answers**, so V4 must be
+interpreted as a different system architecture. Report the frequency of
+controller interventions in addition to the strict solve rate; do not claim
+that the raw LLM independently became more reliable.
+
+**Important limits:** Preflight diagnostics access deterministic mock
+observations, not live infrastructure; id validation assumes the current
+synthetic naming convention. Queue retry/backoff labels are still inconsistent
+between otherwise similar variants; this PR **does not silently change** those
+labels or claim the policy is settled. The controller adds a read-only pool
+check to every ticket, which is allowed by the frozen tool budget but may have
+a real production latency and cost penalty. Benchmark latency excludes real
+network costs of mock diagnostic reads.
+
+```powershell
+git pull origin main
+python -m pip install -e ".[dev]"
+pytest -q
+sre-agent --ticket T009 --model gpt-4.1-mini --config-version 4
+
+# Comparable strict scoring (the original judge rubric):
+sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 4 --judge-rubric-version 1 --limit 5 --output results/v4-smoke
+sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 4 --judge-rubric-version 1 --output results/v4-full
+```
+
+Review `controller_correction`, `raw_response` and `tool_call_origin` in
+JSONL before drawing conclusions. No live v4 benchmark has been run. Evaluate
+fresh, human-reviewed unseen incidents before making production claims.
 
 ## Dataset design
 
