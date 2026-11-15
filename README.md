@@ -17,7 +17,7 @@ explicitly separate, post-hoc V2 policy replay of **50/50** for each model.
 These are mocked, iterated development fixtures, not production validation
 or a statistically significant model ranking.
 
-## Current-model validation : November 2026 (50 tickets completed)
+## Current-model validation: November 2026 (50 tickets completed)
 
 A second controlled comparison evaluated the **current-model pair under the
 same V4 architecture**: economical `gpt-6-luna` versus higher-priced
@@ -76,7 +76,7 @@ sre-eval --models gpt-6-luna gpt-6.1-sol --config-version 4 --judge-rubric-versi
 sre-eval --models gpt-6-luna gpt-6.1-sol --config-version 4 --judge-rubric-version 1 --output results/current-model-50
 ```
 
-## Executive summary : better customer outcomes from the cheaper model
+## Executive summary: better customer outcomes from the cheaper model
 
 **Product question:** Can better agent architecture make a lower-cost model reliable enough to avoid upgrading every customer support ticket to a larger LLM?
 
@@ -176,9 +176,9 @@ sre-eval --models gpt-4.1-mini gpt-4.1 --output results/full
 
 The runner prints a single comparative table and saves:
 
-- `report.md` : readable summary table and run metadata
-- `summary.csv` : one row per model, all metrics side-by-side
-- `runs.jsonl` : one row per ticket and model, including traces of tool calls, labels, quality grades, errors, tokens and latency
+- `report.md`: readable summary table and run metadata
+- `summary.csv`: one row per model, all metrics side-by-side
+- `runs.jsonl`: one row per ticket and model, including traces of tool calls, labels, quality grades, errors, tokens and latency
 
 Pass `--no-judge` for a cheaper **deterministic-only** evaluation. That changes the meaning of solve rate, so never compare runs with and without a judge as if they are equivalent. The default judge model is `gpt-4.1`, configurable with `--judge-model`. The judge adds API spend; it is excluded from the candidate's per-ticket cost/latency to avoid confusing *evaluation overhead* with *serving cost*. Judge token usage is saved in JSONL but is not priced in the summary.
 
@@ -256,7 +256,7 @@ or production readiness. See the full v2 scorecard below for its independently
 measured 50-ticket metrics. V3 was evaluated under the original rubric. Both full-run scores were lower
 than v2; stochastic variation and development-set overfitting remain limitations.
 
-## Measured v2 benchmark : November 15, 2026
+## Measured v2 benchmark: November 15, 2026
 
 **Source:** locally executed `sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 2 --output results/v2-full`, uploaded aggregate report and 100 per-run JSONL records, reviewed before publication. Both models used the same 50 frozen synthetic tickets, v2 prompt/tool contract, original grading rules and `gpt-4.1` judge. V3 results are documented separately below. Estimates exclude judge inference cost and operational escalation costs.
 
@@ -331,7 +331,7 @@ development dataset. New unseen, human-adjudicated holdout incidents, repeated
 model runs and judge agreement checks are needed for defensible customer
 recommendations. The v2 scorecard above remains historical; v3 results follow below.
 
-## Measured v3 regression : November 15, 2026
+## Measured v3 regression: November 15, 2026
 
 **Source:** uploaded 50-ticket v3 `report.md`, `summary.csv` and
 `runs.jsonl` (100 candidate runs), evaluated with
@@ -408,7 +408,7 @@ JSONL before drawing conclusions. V4 was evaluated on the same 50-ticket develop
 results and limitations are below. Use separately developed, human-reviewed
 unseen incidents before making production claims.
 
-## Measured v4 benchmark : November 15, 2026
+## Measured v4 benchmark: November 15, 2026
 
 **Source:** uploaded `report.md`, `summary.csv`, and 100 candidate records
 in `runs.jsonl` from a full 50-ticket/model run using
@@ -490,7 +490,7 @@ See `evals/queue_action_policy_proposal.md` for the unresolved
 retry/backoff labeling question. The policy is **proposed, not enacted**;
 no historical grader, label, dataset, or benchmark score has been altered.
 
-## Measured V4 challenge and judge calibration : November 15, 2026
+## Measured V4 challenge and judge calibration: November 15, 2026
 
 **Source:** uploaded 15-ticket/model `report.md`, `summary.csv` and
 `runs.jsonl` (30 candidate runs), plus `judge-calibration.json`
