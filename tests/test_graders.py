@@ -26,3 +26,35 @@ def test_labels_are_independent_of_tools():
     assert grade_labels(ticket, output)["pass"]
     assert not combined_solve({"pass": False}, grade_labels(ticket, output))
     assert not grade_labels(ticket, None)["pass"]
+
+def test_invalid_documentation_topic_is_rejected():
+    ticket = load_tickets()[2]
+    calls = []
+    for required in ticket.expected["required_tools"]:
+        field = {
+            "check_quota": "org_id",
+            "query_pool_status": "pool_id",
+            "read_recent_job_logs": "job_id",
+            "lookup_docs": "topic",
+        }[required["name"]]
+        value = "ubuntu-20.04" if required["name"] == "lookup_docs" else required["argument"]
+        calls.append({"name": required["name"], "arguments": {field: value}})
+    grade = grade_tools(ticket, calls)
+    assert grade["pass"] is False
+    assert any("invalid docs topic" in reason for reason in grade["violations"])
+    assert any("missing required calls" in reason for reason in grade["violations"])
+
+
+def test_missing_required_docs_call_cannot_be_solved_by_correct_diagnosis():
+    ticket = load_tickets()[2]
+    calls = []
+    for required in ticket.expected["required_tools"]:
+        if required["name"] == "lookup_docs":
+            continue
+        field = {
+            "check_quota": "org_id",
+            "query_pool_status": "pool_id",
+            "read_recent_job_logs": "job_id",
+        }[required["name"]]
+        calls.append({"name": required["name"], "arguments": {field: required["argument"]}})
+    assert not grade_tools(ticket, calls)["pass"]

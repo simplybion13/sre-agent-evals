@@ -11,7 +11,7 @@ from pathlib import Path
 
 from .fixtures import load_tickets
 from .graders import combined_solve, grade_labels, grade_tools
-from .paths import PRICING
+from .paths import PRICING, DEFAULT_CONFIG_VERSION, SUPPORTED_CONFIG_VERSIONS, config_paths
 from .schemas import Diagnosis
 
 
@@ -110,7 +110,8 @@ async def run(args):
     if any(model not in prices["models"] for model in args.models):
         raise SystemExit("Both models must have prices in configs/pricing.json; add them before comparing cost")
     from .agent import build_agent
-    agent_by_model = {name: build_agent(name) for name in args.models}
+    prompt_path, tools_path = config_paths(args.config_version)
+    agent_by_model = {name: build_agent(name, prompt_path=prompt_path, tools_path=tools_path) for name in args.models}
     if not args.no_judge:
         from openai import AsyncOpenAI
     judge_client = AsyncOpenAI() if not args.no_judge else None
@@ -132,6 +133,8 @@ async def run(args):
         writer.writerows(summary)
     meta = {"created_at": datetime.now(timezone.utc).isoformat(), "models": args.models,
             "judge_model": judge_model, "dataset": args.dataset, "tickets_per_model": len(tickets),
+            "config_version": args.config_version, "prompt_path": str(prompt_path),
+            "tool_contract_path": str(tools_path),
             "pricing_checked_on": prices["checked_on"],
             "note": "Cost and token columns exclude judge calls; latency measures agent only. Judge usage in runs.jsonl."}
     report = "# Evaluation report\n\n" + markdown_table(summary) + "\n\n" + json.dumps(meta, indent=2) + "\n"
@@ -143,6 +146,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--models", nargs=2, default=["gpt-4.1-mini", "gpt-4.1"])
     parser.add_argument("--dataset", default=str(Path(__file__).resolve().parents[2] / "data" / "tickets.jsonl"))
+    parser.add_argument("--config-version", type=int, default=DEFAULT_CONFIG_VERSION,
+                        choices=SUPPORTED_CONFIG_VERSIONS)
     parser.add_argument("--judge-model", default="gpt-4.1")
     parser.add_argument("--no-judge", action="store_true", help="Skip LLM judge; solve uses deterministic graders only")
     parser.add_argument("--limit", type=int, default=None)
