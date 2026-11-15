@@ -1,0 +1,24 @@
+version: 4
+service: nimbus-build-pools
+read_only: true
+orchestration: deterministic-preflight
+tools:
+  query_pool_status:
+    description: "Read-only exact-pool status collected once before generation."
+    arguments:
+      pool_id: {type: string, description: "Exact ticket-owned pool ID"}
+  read_recent_job_logs:
+    description: "Read-only exact-job logs if and only if job ID is provided."
+    arguments:
+      job_id: {type: string, description: "Exact ticket-owned job ID"}
+  check_quota:
+    description: "Read-only quota status if observed pool load or job state requires it."
+    arguments:
+      org_id: {type: string, description: "Exact ticket-owned organization ID"}
+  lookup_docs:
+    description: "Read-only canonical documentation selected from observed error and status evidence."
+    arguments:
+      topic:
+        type: string
+        description: "One of the seven canonical documentation topics."
+        enum: [images, skus, quota, queue, capacity, startup, authentication]
