@@ -8,6 +8,64 @@ This repository reproduces that support workflow with the **OpenAI Agents SDK** 
 
 > **Status (November 15, 2026):** V4 is the latest **measured** system configuration. GPT-4.1-mini and GPT-4.1 each solved **44/50 (88%)** frozen synthetic development tickets with the historical judge rubric. Both also solved **15/15** additional synthetic challenge tickets. On two repeated ten-ticket adversarial runs, the smaller model solved **10/10 twice**, versus **9/10 and 10/10** for GPT-4.1. This is a read-only, mocked portfolio experiment, **not production-readiness evidence**.
 
+## Current-model validation — November 2026 (results pending)
+
+The V1–V4 historical experiments compare GPT-4.1 and GPT-4.1-mini as
+a **controlled cost/reliability pair**. Those models are not the basis for
+claiming we selected today's best API models. For an up-to-date portfolio
+check, the next *opt-in* benchmark will compare:
+
+| Candidate | Why included | Standard short-context price, input/output per 1M tokens |
+|---|---|---|
+| `gpt-6-luna` | Current lower-cost candidate | $0.10 / $0.50 |
+| `gpt-6.1-sol` | Current higher-capability reference | $2.00 / $10.00 |
+
+Source: [OpenAI API pricing](https://developers.openai.com/api/docs/pricing)
+(check date: November 15, 2026). Prices in `configs/pricing.json`
+are **illustrative standard-tier estimates**. They exclude cached-input
+discounts, real diagnostic tools, judge costs and operational overhead;
+verify actual usage and tier before interpreting a comparison.
+
+**No modern-model result has been run or claimed in this repository yet.**
+The existing 50-ticket dataset, V4 evidence controller, historical judge
+rubric V1, grading functions and prompts are unchanged. The existing runner
+accepts two model IDs through `--models`; the pricing registry is the
+only runtime file updated for these models.
+
+Start with a small API compatibility and schema smoke test. If either model
+fails due to access, API parameters or SDK compatibility, inspect the
+recorded `error` fields and **do not compare solve or cost metrics** until
+the runtime is working. The runner's cost estimates for error-only runs
+must not be mistaken for serving costs.
+
+```powershell
+git pull origin main
+python -m pip install -e ".[dev]"
+pytest -q
+
+# Use your existing OPENAI_API_KEY environment variable; never commit it.
+# Confirm SDK/model compatibility on only five tickets per candidate.
+sre-eval --models gpt-6-luna gpt-6.1-sol --config-version 4 --judge-rubric-version 1 --limit 5 --output results/current-model-smoke
+
+# Inspect runs.jsonl for errors and verify valid structured outputs first.
+# Only run this once the smoke is clean:
+sre-eval --models gpt-6-luna gpt-6.1-sol --config-version 4 --judge-rubric-version 1 --output results/current-model-50
+
+# Separate, exploratory challenge evaluation; not the frozen 50-ticket result:
+sre-eval --dataset data/holdout_challenge_v1.jsonl --models gpt-6-luna gpt-6.1-sol --config-version 4 --judge-rubric-version 1 --output results/current-model-challenge
+```
+
+If model-family differences require distinct reasoning-effort settings,
+Responses/SDK compatibility adjustments or a model-specific adapter,
+document and version those changes explicitly. Never quietly call that
+an apples-to-apples *agent-only* improvement.
+
+For interview preparation, read
+[`docs/architecture_decision_log.md`](docs/architecture_decision_log.md):
+the rapid AI-assisted implementation, observed V3 regression, V4 design
+decision, separate deterministic/LLM judges, model choice, and evaluation
+confounders are all explained candidly.
+
 ## Executive summary — better customer outcomes from the cheaper model
 
 **Product question:** Can better agent architecture make a lower-cost model reliable enough to avoid upgrading every customer support ticket to a larger LLM?
