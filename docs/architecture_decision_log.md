@@ -18,7 +18,7 @@ synthetic subset; per-ticket candidate inference prices do **not** include
 controller infrastructure, real diagnostic-tool time/cost, LLM judge cost,
 or impact of misdiagnosis.
 
-## Decision 1 : Why GPT-4.1 and GPT-4.1-mini initially?
+## Decision 1: Why GPT-4.1 and GPT-4.1-mini initially?
 
 The controlled pair uses two model sizes in the same generation. GPT-4.1
 was the higher-cost quality reference; GPT-4.1-mini was the cost-sensitive
@@ -30,7 +30,7 @@ On 50 development tickets in v2, mini solved 35/50 (70%); GPT-4.1 solved
 45/50 (90%). The gap made it useful to ask whether orchestration could
 narrow the difference.
 
-## Decision 2 : Why V3 regressed instead of improving
+## Decision 2: Why V3 regressed instead of improving
 
 V3 added prompt constraints, strict ID guarding and extra guidance, but
 the measured strict solve rate **fell** to 33/50 (66%) mini and 41/50
@@ -44,7 +44,7 @@ runs were stochastic, ticket variants were synthetic, and improvements
 were made against the development set. We kept V3 as a visible negative
 result instead of rewriting history.
 
-## Decision 3 : Why deterministic V4 orchestration
+## Decision 3: Why deterministic V4 orchestration
 
 V4 moved read-only evidence collection into observable controller logic
 bounded by ticket-scoped identifiers and fixture observations. The model
@@ -62,7 +62,7 @@ and mini's estimated candidate inference spend fell to $0.000615/attempt
 from $0.001577 in V2. The measured **system** improved; the underlying
 model weights were unchanged. V4 recorded 0/100 safety-gate corrections.
 
-## Decision 4 : Why deterministic graders plus a separate LLM judge
+## Decision 4: Why deterministic graders plus a separate LLM judge
 
 Strict code graders check tool names/IDs, expected diagnosis and required
 actions. The LLM judge assesses customer-facing clarity, grounding and
@@ -81,7 +81,7 @@ The lesson: evaluation design and calibration are part of product quality;
 do not optimize the agent to a miscalibrated judge. Keep the original rubric
 for historical comparisons and report later rubric studies separately.
 
-## Decision 5 : Why validate with current models, and what happened
+## Decision 5: Why validate with current models, and what happened
 
 GPT-4.1 was a reasonable historical cost/reliability pair, but a
 November 2026 evaluation record should distinguish a **controlled historical
