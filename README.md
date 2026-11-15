@@ -6,65 +6,58 @@ Managed build pools fail in ways that look similar to customers: jobs wait in qu
 
 This repository reproduces that support workflow with the **OpenAI Agents SDK** and a fully synthetic infrastructure layer. It ships with 50 labeled tickets, independent code-based and LLM-based graders, and a head-to-head model benchmark that reports accuracy, tool behavior, latency, token volume and estimated agent inference cost.
 
-> **Status (November 15, 2026):** V4 is the latest **measured** system configuration. GPT-4.1-mini and GPT-4.1 each solved **44/50 (88%)** frozen synthetic development tickets with the historical judge rubric. Both also solved **15/15** additional synthetic challenge tickets. On two repeated ten-ticket adversarial runs, the smaller model solved **10/10 twice**, versus **9/10 and 10/10** for GPT-4.1. This is a read-only, mocked portfolio experiment, **not production-readiness evidence**.
+> **Status (November 15, 2026):** V4 is the latest **measured** system configuration. In a new current-model validation, GPT-6 Luna and GPT-6.1 Sol each solved **45/50 (90%)** of the 50 synthetic development tickets; the earlier GPT-4.1-mini and GPT-4.1 V4 runs each solved **44/50 (88%)**. The runs were separate and should not be treated as statistical evidence of improvement. Both also solved **15/15** additional synthetic challenge tickets. On two repeated ten-ticket adversarial runs, the smaller model solved **10/10 twice**, versus **9/10 and 10/10** for GPT-4.1. This is a read-only, mocked portfolio experiment, **not production-readiness evidence**.
 
-## Current-model validation — November 2026 (results pending)
+## Current-model validation — November 2026 (50 tickets completed)
 
-The V1–V4 historical experiments compare GPT-4.1 and GPT-4.1-mini as
-a **controlled cost/reliability pair**. Those models are not the basis for
-claiming we selected today's best API models. For an up-to-date portfolio
-check, the next *opt-in* benchmark will compare:
+A second controlled comparison evaluated the **current-model pair under the
+same V4 architecture**: economical `gpt-6-luna` versus higher-priced
+`gpt-6.1-sol`. Both completed the same 50 pre-existing synthetic
+development tickets with V4 controller-led evidence collection, unchanged
+strict graders and labels, and GPT-4.1 judge rubric V1.
 
-| Candidate | Why included | Standard short-context price, input/output per 1M tokens |
-|---|---|---|
-| `gpt-6-luna` | Current lower-cost candidate | $0.10 / $0.50 |
-| `gpt-6.1-sol` | Current higher-capability reference | $2.00 / $10.00 |
+| Model | Strict solved | Primary diagnosis | Required tools (V4 controller) | Avg agent latency | Est. candidate inference / ticket |
+|---|---:|---:|---:|---:|---:|
+| GPT-6 Luna | **45/50 (90%)** | 100% | 100% | 4.02 s | **$0.000225** |
+| GPT-6.1 Sol | **45/50 (90%)** | 100% | 100% | 4.21 s | $0.003915 |
 
-Source: [OpenAI API pricing](https://developers.openai.com/api/docs/pricing)
-(check date: November 15, 2026). Prices in `configs/pricing.json`
-are **illustrative standard-tier estimates**. They exclude cached-input
-discounts, real diagnostic tools, judge costs and operational overhead;
-verify actual usage and tier before interpreting a comparison.
+At the published illustrative standard-tier token prices, Luna had
+**about 94% lower estimated candidate inference cost per attempted ticket**
+while matching Sol's measured strict solve rate. Both passed the
+separate answer-quality judge on all 50, with no API errors or safety
+controller corrections. This is an *observed* synthetic result, not proof
+of general model parity or production customer savings.
 
-**No modern-model result has been run or claimed in this repository yet.**
-The existing 50-ticket dataset, V4 evidence controller, historical judge
-rubric V1, grading functions and prompts are unchanged. The existing runner
-accepts two model IDs through `--models`; the pricing registry is the
-only runtime file updated for these models.
+**Failure analysis:** Both models failed the *same* five queue tickets
+(`T010/T020/T030/T040/T050`): primary diagnosis and tool grades passed,
+but each omitted the frozen label's secondary `retry_with_backoff` action
+while recommending `tune_concurrency`. The existing advisory queue
+action audit flags these as labeling-policy review candidates. We **retain
+the strict 90% result**; independent adjudication should precede any
+separately versioned rescore. Judge passes do not override strict labels.
 
-Start with a small API compatibility and schema smoke test. If either model
-fails due to access, API parameters or SDK compatibility, inspect the
-recorded `error` fields and **do not compare solve or cost metrics** until
-the runtime is working. The runner's cost estimates for error-only runs
-must not be mistaken for serving costs.
+| Historical comparison (single synthetic development runs) | Strict solved | Est. candidate inference / ticket |
+|---|---:|---:|
+| V4 GPT-4.1-mini | 44/50 (88%) | $0.000615 |
+| V4 GPT-4.1 | 44/50 (88%) | $0.003231 |
+| V4 GPT-6 Luna | 45/50 (90%) | $0.000225 |
+| V4 GPT-6.1 Sol | 45/50 (90%) | $0.003915 |
+
+The one-ticket increase is not statistically conclusive. Costs exclude
+judge, real diagnostics, controller infrastructure and escalation,
+and may vary by billing tier or cached input. These runs use the **same
+studied development set**, not independent customer incidents.
+
+**Read the [full current-model validation and grading analysis](docs/current_model_validation_2026_11.md)**
+and the [Architecture and Evaluation Decision Log](docs/architecture_decision_log.md)
+for rationale, tradeoffs, reproducibility and limitations.
+
+To reproduce the current comparison (API credentials required; no secrets in Git):
 
 ```powershell
-git pull origin main
-python -m pip install -e ".[dev]"
-pytest -q
-
-# Use your existing OPENAI_API_KEY environment variable; never commit it.
-# Confirm SDK/model compatibility on only five tickets per candidate.
 sre-eval --models gpt-6-luna gpt-6.1-sol --config-version 4 --judge-rubric-version 1 --limit 5 --output results/current-model-smoke
-
-# Inspect runs.jsonl for errors and verify valid structured outputs first.
-# Only run this once the smoke is clean:
 sre-eval --models gpt-6-luna gpt-6.1-sol --config-version 4 --judge-rubric-version 1 --output results/current-model-50
-
-# Separate, exploratory challenge evaluation; not the frozen 50-ticket result:
-sre-eval --dataset data/holdout_challenge_v1.jsonl --models gpt-6-luna gpt-6.1-sol --config-version 4 --judge-rubric-version 1 --output results/current-model-challenge
 ```
-
-If model-family differences require distinct reasoning-effort settings,
-Responses/SDK compatibility adjustments or a model-specific adapter,
-document and version those changes explicitly. Never quietly call that
-an apples-to-apples *agent-only* improvement.
-
-For interview preparation, read
-[`docs/architecture_decision_log.md`](docs/architecture_decision_log.md):
-the rapid AI-assisted implementation, observed V3 regression, V4 design
-decision, separate deterministic/LLM judges, model choice, and evaluation
-confounders are all explained candidly.
 
 ## Executive summary — better customer outcomes from the cheaper model
 
@@ -103,7 +96,7 @@ flowchart TD
     F[(Synthetic pool, job and quota fixtures)] --> B
     P[Canonical support documentation] --> B
     B --> C[Recorded tool calls + evidence bundle]
-    C --> D[GPT-4.1-mini or GPT-4.1]
+    C --> D[Selected candidate model]
     S[Versioned V4 system instructions] --> D
     D --> E[Structured diagnosis + customer reply]
     E --> G[Missing-job-ID safety boundary]
