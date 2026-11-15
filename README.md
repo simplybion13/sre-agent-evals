@@ -6,7 +6,7 @@ Managed build pools fail in ways that look similar to customers: jobs wait in qu
 
 This repository reproduces that support workflow with the **OpenAI Agents SDK** and a fully synthetic infrastructure layer. It ships with 50 labeled tickets, independent code-based and LLM-based graders, and a head-to-head model benchmark that reports accuracy, tool behavior, latency, token volume and estimated agent inference cost.
 
-> **Status:** Fully implemented source and offline tests. **No live API evaluation results are claimed.** You need an OpenAI API key to run the agent and model comparison. This repository does not access customer systems or perform operational changes.
+> **Status:** A measured 50-ticket v2 API benchmark is documented below (2026-11-15). These results are synthetic, development-set measurements, not production-readiness evidence. The agent uses mocked, read-only infrastructure and cannot perform operational changes.
 
 ## Why this is interesting
 
@@ -22,8 +22,8 @@ The design is a deliberately small but realistic vertical slice of a customer-fa
 ```mermaid
 flowchart TD
     A[Ticket + identifiers] --> B[OpenAI Agents SDK runner]
-    P[Versioned support prompt v1] --> B
-    T[Versioned read-only tool contract v1] --> B
+    P[Versioned support prompt] --> B
+    T[Versioned read-only tool contract] --> B
     B --> C[Four mock function tools]
     F[Ticket-scoped fixture store] --> C
     C --> B
@@ -133,6 +133,35 @@ same five tickets may overfit; add unseen holdout incidents before describing
 production generalization. The new enum constrains tool arguments, but it does
 not independently prove that the agent reads the right docs or follows them.
 
+## Measured v2 benchmark — November 15, 2026
+
+**Source:** locally executed `sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 2 --output results/v2-full`, uploaded aggregate report and 100 per-run JSONL records, reviewed before publication. Both models used the same 50 frozen synthetic tickets, v2 prompt/tool contract, original grading rules and `gpt-4.1` judge. **No v3 results are available.** Estimates exclude judge inference cost and operational escalation costs.
+
+| Model | Solved | Tool-pass | Primary-diagnosis | Mean latency | P95 latency | Mean tokens | Est. $/attempt | Est. $/solve* |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `gpt-4.1-mini` | 35/50 (70%) | 43/50 (86%) | 44/50 (88%) | 3.41s | 4.68s | 3,287 | $0.001577 | $0.002253 |
+| `gpt-4.1` | 45/50 (90%) | 49/50 (98%) | 50/50 (100%) | 3.21s | 4.22s | 3,445 | $0.008181 | $0.009090 |
+
+*Est. cost per solved ticket = estimated total candidate-agent spend / solved count; cost rates were checked on 2026-11-14, not invoice-accurate. Judge expense is excluded.*
+
+### Observed failure modes (reviewed from individual runs)
+
+- **Quota:** `gpt-4.1-mini` solved **0/5** quota tickets despite predicting the correct diagnosis and actions. It skipped the mandatory `lookup_docs(topic="quota")` call all five times. `gpt-4.1` solved **5/5**.
+- **Missing job ID / insufficient evidence:** `gpt-4.1-mini` solved **0/5**; all five predicted `healthy_or_transient` instead of `insufficient_evidence`. `gpt-4.1` solved **4/5**; in one case it omitted the required pool-status lookup despite the correct diagnosis.
+- **Queue:** `gpt-4.1-mini` solved **7/10** and `gpt-4.1` **6/10**. Most misses were an absent **`retry_with_backoff` secondary action** on the queue variant that requires both `tune_concurrency` and `retry_with_backoff`; the exact required-action rule remains unchanged pending policy review.
+- **Malformed identifier:** `gpt-4.1-mini` made an unexpected `read_recent_job_logs` call in T050 whose `job_id` included instruction-like injected text. The existing ID-aware tool grader rejected it. This is a regression target, not proof that a real external prompt-injection attack succeeded.
+- **LLM judge sensitivity:** All **100** candidate customer responses passed the v1 quality rubric, including some runs whose predicted diagnosis was wrong. The independent code graders still rejected those runs. Future judge calibration should use deliberately wrong and unsafe examples without silently redefining the original benchmark.
+
+**Interpretation:** `gpt-4.1` delivered a 20 percentage-point higher strict solve rate at about 5.2× the estimated inference cost per attempt. It is the stronger reliability candidate *in this synthetic evaluation*. Claims about real customer impact need unseen holdout tickets, blinded labels, calibrated graders, and operational cost-of-error analysis. The earlier five-ticket v1/v2 comparison was a development smoke test; it is not evidence of full-set improvement.
+
+### Reproduce / future comparison
+
+```powershell
+sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 2 --output results/v2-full
+```
+
+Results are stochastic; use multiple seeds/runs and holdout tickets before adopting thresholds. The source run data is stored locally by the operator; this public README intentionally publishes only reviewed, aggregated and nonsensitive findings.
+
 ## Dataset design
 
 50 deterministic, synthetic tickets (10 scenario templates × 5 wording/number variations). The fixtures contain current pool state, organization quota and job logs. Each ticket has a code-labeled expected diagnosis, required actions and specific required tool calls, including exact argument values. Five tickets intentionally omit a job ID; the correct response is to request that missing evidence, not fabricate an ID or read somebody else's logs.
@@ -163,12 +192,12 @@ The tool grader does **not** pretend a call was useful just because it happened:
 
 ### Scorecard layout
 
-The actual values are computed by `sre-eval`; the empty cells below are **not experimental results**.
+The following values are from the **measured v2 50-ticket run**, not illustrative or projected.
 
 | Model | Tickets | Solve % | Tool pass % | Diagnosis % | Avg latency s | P95 s | Avg in tokens | Avg out tokens | Avg total tokens | Avg $/ticket |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| gpt-4.1-mini | 50 | — | — | — | — | — | — | — | — | — |
-| gpt-4.1 | 50 | — | — | — | — | — | — | — | — | — | — |
+| gpt-4.1-mini | 50 | 70.0 | 86.0 | 88.0 | 3.41 | 4.68 | 3,068 | 219 | 3,287 | $0.001577 |
+| gpt-4.1 | 50 | 90.0 | 98.0 | 100.0 | 3.21 | 4.22 | 3,230 | 215 | 3,445 | $0.008181 | — |
 
 Solve rate is `all_passing_tickets / all_attempted_tickets`; API exceptions count as failures. Latency includes candidate agent model and tool round trips, **not** judge calls. Token counts are aggregated by the Agents SDK across the entire agent run. Average cost is `(input_tokens × input_rate + output_tokens × output_rate) / 1,000,000`, using `configs/pricing.json`. Prices are configurable snapshots, **not invoice-grade charges** (cached tokens, volume tiers, tools and other charges are not modeled). Verify pricing and model availability before running.
 
