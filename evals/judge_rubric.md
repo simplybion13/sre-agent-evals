@@ -1,4 +1,4 @@
-# Support-answer quality rubric: v1
+# Support-answer quality rubric — v1
 
 The judge receives the ticket, expected diagnosis/actions, actual tool calls, and the
 agent's customer-facing answer. Score each dimension from 0 to 2:
