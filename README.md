@@ -176,7 +176,7 @@ sre-eval --models gpt-4.1-mini gpt-4.1 --output results/full
 
 The runner prints a single comparative table and saves:
 
-- `report.md` — hiring-manager-friendly summary table and run metadata
+- `report.md` — readable summary table and run metadata
 - `summary.csv` — one row per model, all metrics side-by-side
 - `runs.jsonl` — one row per ticket and model, including traces of tool calls, labels, quality grades, errors, tokens and latency
 
@@ -745,7 +745,7 @@ These are **engineering failure modes and regression checks**, not a fabricated 
 | Comparing models without controlling the test conditions | Apples-to-oranges claims | Frozen fixtures, identical prompt/tool versions, two explicit models and per-run metadata; separate judge cost. |
 | Missing job IDs tempt fabricated troubleshooting | Credibility and isolation risk | Five missing-evidence tickets and a test asserting fake log queries fail. |
 
-**Remaining limitations:** the mocks are deterministic and simplified; identical topic templates can inflate generalization; there is no simulation of multi-turn dialogue, adversarial log injection beyond prompt-level guidance, live quota races, tool failures/retries, per-region image drift, or human-reviewed judge agreement. The judge itself is a model, so human calibration and blind spot checks are required for credible deployment results. The tool-call grader allows up to two extra reads beyond required calls; it enforces neither strict call ordering nor semantic minimality. This is a portfolio exercise, not a production incident responder.
+**Remaining limitations:** the mocks are deterministic and simplified; identical topic templates can inflate generalization; there is no simulation of multi-turn dialogue, adversarial log injection beyond prompt-level guidance, live quota races, tool failures/retries, per-region image drift, or human-reviewed judge agreement. The judge itself is a model, so human calibration and blind spot checks are required for credible deployment results. The tool-call grader allows up to two extra reads beyond required calls; it enforces neither strict call ordering nor semantic minimality. This is a synthetic research prototype, not a production incident responder.
 
 ## Model tradeoffs I would recommend to a customer
 
