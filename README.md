@@ -6,7 +6,25 @@ Managed build pools fail in ways that look similar to customers: jobs wait in qu
 
 This repository reproduces that support workflow with the **OpenAI Agents SDK** and a fully synthetic infrastructure layer. It ships with 50 labeled tickets, independent code-based and LLM-based graders, and a head-to-head model benchmark that reports accuracy, tool behavior, latency, token volume and estimated agent inference cost.
 
-> **Status:** A measured 50-ticket v2 API benchmark is documented below (2026-11-15). These results are synthetic, development-set measurements, not production-readiness evidence. The agent uses mocked, read-only infrastructure and cannot perform operational changes.
+> **Status (November 15, 2026):** V4 is the latest **measured** system configuration. GPT-4.1-mini and GPT-4.1 each solved **44/50 (88%)** frozen synthetic development tickets with the historical judge rubric. Both also solved **15/15** additional synthetic challenge tickets. On two repeated ten-ticket adversarial runs, the smaller model solved **10/10 twice**, versus **9/10 and 10/10** for GPT-4.1. This is a read-only, mocked portfolio experiment, **not production-readiness evidence**.
+
+## Executive summary — better customer outcomes from the cheaper model
+
+**Product question:** Can better agent architecture make a lower-cost model reliable enough to avoid upgrading every customer support ticket to a larger LLM?
+
+**Measured answer, in this synthetic workflow:** By moving evidence collection from model-chosen tool calls into a bounded, read-only controller, **GPT-4.1-mini increased strict solve rate from 70% (V2) to 88% (V4)** on the **same 50 development tickets**. Its estimated **candidate inference cost per attempt fell 61%**, from **$0.001577** to **$0.000615**. The V3 iteration regressed to 66%, so the trajectory was not monotonic.
+
+| Customer-facing metric | GPT-4.1-mini V2 | GPT-4.1-mini V4 | Interpretation |
+|---|---:|---:|---|
+| Strict solved tickets | 35/50 (70%) | **44/50 (88%)** | **+18 percentage points**, measured once per configuration |
+| Primary diagnosis accuracy | 88% | **100%** | Correct underlying cause on this development set |
+| Required-tool grade | 86% | **100%** | V4 **controller** selects tools, not the model |
+| Estimated inference cost / attempt | $0.001577 | **$0.000615** | **61% lower** candidate-model cost |
+| Estimated inference cost / strict solve | $0.002253 | **$0.000699** | Approximately **69% lower** |
+
+In V4, GPT-4.1-mini **matched GPT-4.1's 88% strict solve rate** on the 50-ticket set while using about **81% less estimated candidate inference spend per attempt** ($0.000615 versus $0.003231). In the separate 15-ticket challenge set, both solved 15/15; in two runs of ten adversarial tickets, mini solved 20/20 attempted cases, compared with 19/20 for GPT-4.1. These repeated cases are **not 20 independent incidents**.
+
+**Why a customer should care:** Reliability per dollar is a more useful decision metric than choosing the biggest model by default. A cheap but incorrect answer can raise support cost; a lower-cost model with reliable evidence gathering can improve measured resolution economics. This project demonstrates a **system-level** tradeoff, not model fine-tuning, guaranteed generalization, or actual customer savings. All inference estimates **exclude** real tool/network overhead, controller operations, judge cost, escalations and incident severity. See [the full customer economics and limitations](#customer-value-decision-making-the-economical-model-more-reliable).
 
 ## Why this is interesting
 
@@ -19,23 +37,32 @@ The design is a deliberately small but realistic vertical slice of a customer-fa
 
 ## Architecture
 
+**V4 (current default): controller-led evidence gathering, then model reasoning.**
+
 ```mermaid
 flowchart TD
-    A[Ticket + identifiers] --> B[OpenAI Agents SDK runner]
-    P[Versioned support prompt] --> B
-    T[Versioned read-only tool contract] --> B
-    B --> C[Four mock function tools]
-    F[Ticket-scoped fixture store] --> C
-    C --> B
-    B --> D[Structured diagnosis + customer reply]
-    D --> E[Exact diagnosis and action grader]
-    C --> G[Recorded tool-call grader]
-    D --> H[LLM judge with written rubric]
-    E --> I[Per-ticket results]
-    G --> I
-    H --> I
-    I --> J[Two-model comparison table]
+    A[Customer ticket + ticket-scoped IDs] --> B[Read-only evidence controller]
+    F[(Synthetic pool, job and quota fixtures)] --> B
+    P[Canonical support documentation] --> B
+    B --> C[Recorded tool calls + evidence bundle]
+    C --> D[GPT-4.1-mini or GPT-4.1]
+    S[Versioned V4 system instructions] --> D
+    D --> E[Structured diagnosis + customer reply]
+    E --> G[Missing-job-ID safety boundary]
+    G --> H[Final answer + correction audit]
+    C --> I[Strict tool-call grader]
+    H --> J[Strict diagnosis and action grader]
+    H --> K[LLM answer-quality judge: rubric V1 default]
+    I --> L[Per-ticket result and model scorecard]
+    J --> L
+    K --> L
+    H --> M[Optional advisory response audit]
+    L --> N[Latency, token and inference-cost report]
 ```
+
+All diagnostic reads are **mocked and read-only**; V4 exposes no additional tools to the LLM. The model interprets the collected evidence, while the controller records what was fetched. The missing-job-ID boundary can correct an unsupported "healthy" answer, but was **not triggered in the reported V4 development, challenge or adversarial runs**. Optional response audits and experimental judge rubrics **do not silently change historical strict scores**.
+
+**Earlier V1–V3 experiments** used model-directed calls to the four mock tools rather than deterministic preflight. The versioned prompts/tool contracts are retained for reproducibility. The older tool-call architecture and V4 system-level results should not be mistaken for a model-only apples-to-apples efficiency claim.
 
 ### Files to review first
 
@@ -44,6 +71,9 @@ flowchart TD
 | `configs/prompts/v1/system.md` | Support policy, evidence priority, escalation and safety guardrails |
 | `configs/tools/v1/tools.yaml` | Auditable definitions and required arguments of all four read-only tools |
 | `src/sre_agent_evals/agent.py` | `Agent`, `@function_tool`, per-ticket context and tool-call instrumentation |
+| `src/sre_agent_evals/orchestration.py` | V4's read-only controller, evidence bundle and audited missing-job-ID boundary |
+| `src/sre_agent_evals/response_audit.py` | Optional advisory response checks; not a strict grader |
+| `evals/judge_rubric_v3.md` | Experimental evidence-aware judge; historical rubric V1 remains default |
 | `data/tickets.jsonl` | 50 frozen, synthetic messages with fixtures and **hidden-to-agent** labels |
 | `src/sre_agent_evals/graders.py` | Deterministic tool-ID, required-call, diagnosis and action checks |
 | `evals/judge_rubric.md` | Written 8-point customer-answer rubric and pass threshold |
@@ -537,12 +567,24 @@ and customer satisfaction on independently adjudicated real incidents.
 Small repeated synthetic datasets and reused labels cannot establish those
 production outcomes.
 
-## Separate evidence-aware judge experiment (v3; not yet live evaluated)
+## Evidence-aware judge V3: initial measured calibration and replay
 
-The historical quality rubric **v1 remains the default** for all published
-solve rates. Calibration of rubric v2 agreed with only 4/6 handcrafted cases
-(v1 agreed with 6/6), so simply exposing structured evidence did not
-improve the measured judge.
+The historical quality rubric **V1 remains the default** for all published
+solve rates. On the *latest* six-case handcrafted calibration run with GPT-4.1
+as judge, V1 agreed with **6/6** expected decisions, V2 with **5/6** and
+experimental **V3 with 6/6**. On a *previous* run of the same six cases,
+V2 agreed with only **4/6**, showing that judge decisions can vary.
+These are small, hand-authored calibration checks—not reliable estimates
+of general judge accuracy or evidence of production-grade calibration.
+
+In a judge-only replay of **A009 / GPT-4.1** using the *unchanged saved
+candidate response*, rubric V1 had given **6/8 (fail)** while
+evidence-aware rubric V3 gave **8/8 (pass)**. V3 explicitly recognized
+the image alternatives as supported by the canonical `images`
+documentation already retrieved. The original strict failed result
+**remains unchanged**; replay changes the **evaluation view**, not what
+the agent said. This is one supporting case, not proof V3 will always
+adjudicate correctly.
 
 Experimental `evals/judge_rubric_v3.md` adds explicit documentation
 provenance rules for supported SKUs/images and receives the retrieved
@@ -557,7 +599,7 @@ git pull origin main
 python -m pip install -e ".[dev]"
 pytest -q
 
-# Opt-in calibration ONLY; no v3 judge efficacy is claimed yet:
+# Repeat the measured six-case calibration (results may vary):
 python scripts/compare_judge_rubrics.py --rubrics 1 2 3 --output results/judge-calibration-v3.json
 
 # Optional, separately reported re-evaluation of the 10-ticket synthetic suite:
@@ -579,9 +621,9 @@ performance. The calibration CLI reports disagreements without a failing
 exit code by default; pass `--strict` to fail on any disagreement.
 
 Version 3 here refers to the **judge rubric**, not the agent configuration.
-It must be calibrated and human-reviewed before being used as a scoring
-policy. Neither historical benchmark records nor rubric v1/v2 contents are
-modified in this experiment.
+It still requires a broader independent, human-adjudicated calibration
+before being used as a scoring policy. Neither historical benchmark records
+nor rubric V1/V2 contents were modified in this experiment.
 
 ## Dataset design
 
