@@ -1,5 +1,13 @@
 """Offline judge-only replay selectors never alter candidate records."""
-from scripts.rejudge_runs import select_rows
+import importlib.util
+from pathlib import Path
+
+# This is a CLI script, not an installable package.
+SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "rejudge_runs.py"
+spec = importlib.util.spec_from_file_location("rejudge_runs", SCRIPT)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+select_rows = module.select_rows
 from sre_agent_evals.fixtures import load_tickets
 
 
