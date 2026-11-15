@@ -107,7 +107,7 @@ The v2 experiment makes three targeted changes:
   labels, graders and judge rubric are unchanged**, so comparisons retain the
   same success criteria.
 
-The project defaults to v2 for new runs. Use `--config-version 1` to reproduce
+The project defaults to the newest experimental configuration (currently v4) for new runs. Use `--config-version 1` to reproduce
 the baseline configuration without editing any source files:
 
 ```powershell
@@ -258,6 +258,55 @@ It did improve missing-ID handling from four to five correct solves.
 v3 is an informative unsuccessful iteration. Keep v1–v3 and the strict
 grader intact while testing deterministic v4 evidence collection;
 independent holdout evaluation is still required.
+
+## Experimental v4: deterministic evidence orchestration (results pending)
+
+**Motivation:** V3 was worse than V2 on the same synthetic 50-ticket
+development benchmark, despite keeping GPT-4.1 primary diagnosis at 100%.
+The next hypothesis is that *tool selection and evidence sufficiency belong in
+bounded, inspectable control flow, not in a larger system prompt*.
+
+V4 is a **composite controller + LLM** experiment, not a mere prompt variant.
+It uses ticket-owned IDs and **observed mock tool results**, never frozen
+expected labels or the hidden scenario category, to collect the needed pool,
+job-log, organization-quota and canonical-documentation evidence.
+It records those calls and passes a sourced observation bundle to the model.
+The model has no additional tool access, limiting duplicative or malformed
+calls. For an unresolved failure with no job ID, a narrowly scoped,
+**audited safety gate** can replace an unsupported "healthy" claim with a
+request for the missing job ID. The raw model answer and the correction
+record are both preserved in `runs.jsonl`.
+
+The existing strict tool/label graders and original LLM judge rubric remain
+unchanged for comparison. **However, preflight controller calls now count as
+tool calls, and the safety gate may modify final answers**, so V4 must be
+interpreted as a different system architecture. Report the frequency of
+controller interventions in addition to the strict solve rate; do not claim
+that the raw LLM independently became more reliable.
+
+**Important limits:** Preflight diagnostics access deterministic mock
+observations, not live infrastructure; id validation assumes the current
+synthetic naming convention. Queue retry/backoff labels are still inconsistent
+between otherwise similar variants; this PR **does not silently change** those
+labels or claim the policy is settled. The controller adds a read-only pool
+check to every ticket, which is allowed by the frozen tool budget but may have
+a real production latency and cost penalty. Benchmark latency excludes real
+network costs of mock diagnostic reads.
+
+```powershell
+git pull origin main
+python -m pip install -e ".[dev]"
+pytest -q
+sre-agent --ticket T009 --model gpt-4.1-mini --config-version 4
+
+# Comparable strict scoring (the original judge rubric):
+sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 4 --judge-rubric-version 1 --limit 5 --output results/v4-smoke
+sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 4 --judge-rubric-version 1 --output results/v4-full
+```
+
+Review `controller_correction`, `raw_response` and `tool_call_origin` in
+JSONL before drawing conclusions. No live v4 benchmark has been run. Evaluate
+fresh, human-reviewed unseen incidents before making production claims.
 
 ## Dataset design
 
