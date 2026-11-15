@@ -1,40 +1,18 @@
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import get_args
-
 import yaml
 from agents import Agent, RunContextWrapper, function_tool
 
+from .contracts import validate_tool_contract
 from .fixtures import DOCS, lookup_fixture
 from .paths import PROMPT, TOOLS
 from .schemas import Diagnosis, DocTopic, Ticket
-
-EXPECTED_TOOLS = {"query_pool_status", "read_recent_job_logs", "check_quota", "lookup_docs"}
-
 
 @dataclass
 class TicketContext:
     ticket: Ticket
     tool_calls: list[dict] = field(default_factory=list)
-
-
-def validate_tool_contract(spec: dict) -> int:
-    """Refuse invalid or mismatched tool contracts instead of silently falling back."""
-    if not isinstance(spec, dict) or spec.get("version") not in (1, 2) or spec.get("read_only") is not True:
-        raise ValueError("Unexpected or non-read-only tool specification")
-    definitions = spec.get("tools")
-    if not isinstance(definitions, dict) or set(definitions) != EXPECTED_TOOLS:
-        raise ValueError("Tool manifest does not match tool implementation")
-    if spec["version"] == 2:
-        topic_spec = definitions["lookup_docs"].get("arguments", {}).get("topic", {})
-        declared = topic_spec.get("enum")
-        if (topic_spec.get("type") != "string"
-                or not isinstance(declared, list)
-                or len(declared) != len(set(declared))
-                or set(declared) != set(get_args(DocTopic))):
-            raise ValueError("v2 doc topic enum must match DocTopic exactly")
-    return spec["version"]
 
 
 def build_agent(model: str, prompt_path: Path = PROMPT, tools_path: Path = TOOLS) -> Agent:
