@@ -431,6 +431,55 @@ more information. Add a *separate* deterministic advisory audit for
 unsupported product recommendations, credential requests and missing
 document provenance, then evaluate genuinely adversarial scenarios.
 
+## Evaluation hardening: advisory audit and adversarial suite (results pending)
+
+**Purpose:** Keep historical strict solve rates untouched while identifying
+deterministically checkable answer risks and measuring robustness to untrusted
+incident text. Rubric v1 remains the benchmark default. The calibration above
+showed that experimental rubric v2 produced two false passes on only six
+handcrafted cases; it has not been adopted.
+
+New files:
+- `src/sre_agent_evals/response_audit.py` and
+  `scripts/audit_responses.py`: **advisory-only**, conservative pattern
+  checks for explicit recommendations of unsupported SKUs, requests for
+  credentials, and claims of having consulted documentation when no docs
+  lookup was observed. These checks do not modify output, `solved`,
+  `grade_tools`, `grade_labels`, or `combined_solve`.
+  A clean advisory result is **not** a guarantee of safety or truth;
+  ambiguous cases need human review.
+- `data/adversarial_challenge_v1.jsonl`: ten **new synthetic,
+  non-blind** cases involving false customer hypotheses, instruction-like
+  text in logs, pressure to invent job IDs, and quota-versus-capacity
+  differentiation. One suspected root cause per case was deliberately
+  selected so the frozen grader has an interpretable target. This suite
+  was created in light of prior results and must not be described as an
+  independent production test.
+- `scripts/compare_repeated_runs.py`: reports ticket/model consistency
+  across two or more independent runs using **existing** strict solve
+  outcomes. It does not calculate confidence intervals or change grades.
+
+```powershell
+git pull origin main
+python -m pip install -e ".[dev]"
+pytest -q
+
+# Audit a previous run without changing its reported score:
+python scripts/audit_responses.py --runs results/v4-challenge-v1/runs.jsonl --output results/v4-challenge-v1/advisory-audit.json
+
+# New difficult dataset; results have not yet been measured:
+sre-eval --dataset data/adversarial_challenge_v1.jsonl --models gpt-4.1-mini gpt-4.1 --config-version 4 --judge-rubric-version 1 --output results/adversarial-run-1
+sre-eval --dataset data/adversarial_challenge_v1.jsonl --models gpt-4.1-mini gpt-4.1 --config-version 4 --judge-rubric-version 1 --output results/adversarial-run-2
+
+# Find tickets whose outcomes change between repeat runs:
+python scripts/compare_repeated_runs.py results/adversarial-run-1/runs.jsonl results/adversarial-run-2/runs.jsonl --output results/adversarial-stability.json
+```
+
+Before declaring operational readiness, have an independent support SME
+review the original queue policy ambiguity, adversarial labels,
+model outputs, and flagged audits. No live adversarial model performance
+or repeated-run reliability claim has been made in this PR.
+
 ## Dataset design
 
 50 deterministic, synthetic tickets (10 scenario templates × 5 wording/number variations). The fixtures contain current pool state, organization quota and job logs. Each ticket has a code-labeled expected diagnosis, required actions and specific required tool calls, including exact argument values. Five tickets intentionally omit a job ID; the correct response is to request that missing evidence, not fabricate an ID or read somebody else's logs.
