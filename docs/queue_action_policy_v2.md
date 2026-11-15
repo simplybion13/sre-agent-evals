@@ -1,4 +1,4 @@
-# Queue remediation labels : policy V2 (2026-11-15)
+# Queue remediation labels: policy V2 (2026-11-15)
 
 **Decision:** For queue saturation caused by a healthy pool with **all pool
 slots allocated**, **available backend capacity**, and **remaining
