@@ -6,6 +6,12 @@ DiagnosisCode = Literal[
     "capacity_unavailable", "agent_bootstrap_failure", "agent_auth_failure",
     "healthy_or_transient", "insufficient_evidence",
 ]
+# The SDK uses this Literal to expose a finite JSON Schema enum for lookup_docs.
+# Keep it in sync with configs/tools/v2/tools.yaml; build_agent validates parity.
+DocTopic = Literal[
+    "images", "skus", "quota", "queue", "capacity", "startup", "authentication",
+]
+
 ActionCode = Literal[
     "tune_concurrency", "retry_with_backoff", "request_quota_increase",
     "select_supported_image", "select_supported_sku", "change_region_or_sku",
