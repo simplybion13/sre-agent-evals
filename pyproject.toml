@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sre-agent-evals"
+version = "0.1.0"
+description = "Evidence-grounded CI/CD build-pool support agent and reproducible evaluations"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["openai-agents>=0.6.0,<1", "openai>=1.100.0,<3", "pydantic>=2.8,<3", "PyYAML>=6.0,<7"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "ruff>=0.11,<1"]
+
+[project.scripts]
+sre-agent = "sre_agent_evals.cli:main"
+sre-eval = "sre_agent_evals.eval_runner:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100

@@ -1,0 +1,20 @@
+version: 1
+service: nimbus-build-pools
+read_only: true
+tools:
+  query_pool_status:
+    description: "Inspect pool health, queue depth, running jobs, agent slots and capacity state."
+    arguments:
+      pool_id: {type: string, description: "Exact customer pool ID"}
+  read_recent_job_logs:
+    description: "Read the latest sanitized startup/build event lines for an exact job."
+    arguments:
+      job_id: {type: string, description: "Exact job ID"}
+  check_quota:
+    description: "Inspect organization concurrency quota and usage."
+    arguments:
+      org_id: {type: string, description: "Exact customer organization ID"}
+  lookup_docs:
+    description: "Read platform documentation for supported images, SKUs, quotas, or startup."
+    arguments:
+      topic: {type: string, description: "One of images, skus, quota, queue, capacity, startup, authentication"}
