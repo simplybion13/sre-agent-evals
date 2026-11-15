@@ -32,7 +32,7 @@ def judge_payload(ticket: Ticket, output: Diagnosis, calls: list[dict],
     if rubric_version == 1:
         # Preserve historical v1 judge input structure.
         return {**base, "answer": output.customer_response}
-    if rubric_version == 2:
+    if rubric_version in (2, 3):
         # Only reveal canonical documentation actually requested in observed
         # calls. The original judge v1 payload is unchanged for comparability.
         looked_up_docs = []
@@ -42,8 +42,14 @@ def judge_payload(ticket: Ticket, output: Diagnosis, calls: list[dict],
             topic = call.get("arguments", {}).get("topic")
             if topic in DOCS:
                 looked_up_docs.append({"topic": topic, "content": DOCS[topic]})
-        return {**base, "answer": output.model_dump(),
-                "retrieved_documentation": looked_up_docs}
+        payload = {**base, "answer": output.model_dump(),
+                   "retrieved_documentation": looked_up_docs}
+        if rubric_version == 3:
+            # Disclose deterministic advisory findings separately; the judge
+            # should adjudicate answer quality, not rewrite tool compliance.
+            from .response_audit import audit_response
+            payload["deterministic_advisory_audit"] = audit_response(output, calls)
+        return payload
     raise ValueError(f"Unsupported judge rubric version: {rubric_version}")
 
 
