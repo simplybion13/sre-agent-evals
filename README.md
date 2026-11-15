@@ -351,12 +351,10 @@ mandatory action requirements. Maintain the historical grading labels and
 scores untouched; document a proposed versioned action policy separately
 rather than rescoring the previous runs.
 
-**Next validation:** Run the opt-in judge calibration cases with both
-original and improved rubric, then evaluate a separately authored challenge
-set. No judge-calibration agreement or challenge-set model performance is
-claimed until those runs are actually executed.
+**Next validation:** Use harder adversarial inputs, repeated runs, and human
+adjudication. The measured challenge/calibration results are recorded below.
 
-## Challenge-set and judge calibration workflow (not yet evaluated)
+## Challenge-set and judge calibration workflow (measured)
 
 To avoid repeatedly optimizing on the 50-ticket development data, this PR
 adds `data/holdout_challenge_v1.jsonl` with **15 separately authored synthetic
@@ -364,8 +362,8 @@ cases** across nine incident categories. They use different support-request
 wording and independently specified observation/expected-action records.
 This is an *additional challenge set*, not a statistically independent
 real-world distribution and not a blind external benchmark; scenarios were
-authored after reviewing earlier failure patterns. No model outcomes for
-these cases have been measured yet. Do not use results to revise prompts and
+authored after reviewing earlier failure patterns. The first measured run is recorded below; repeatability on truly blind
+real-world incidents remains untested. Do not use results to revise prompts and
 then continue calling the same cases unseen.
 
 Run after merging this PR:
@@ -383,7 +381,7 @@ sre-eval --dataset data/holdout_challenge_v1.jsonl --models gpt-4.1-mini gpt-4.1
 python scripts/compare_judge_rubrics.py --output results/judge-calibration.json
 ```
 
-Calibration results are **not yet known**. The experimental rubric v2 now
+Calibration results from the first six-case run are documented below. The experimental rubric v2 now
 receives actual canonical documentation text for *observed* `lookup_docs`
 calls, rather than a call name alone. Rubric v1's inputs and logic are
 unchanged, so historical strict solve rates are preserved. Calibrating
@@ -393,6 +391,45 @@ review a broader blind adjudicated set before concluding calibration improved.
 See `evals/queue_action_policy_proposal.md` for the unresolved
 retry/backoff labeling question. The policy is **proposed, not enacted**;
 no historical grader, label, dataset, or benchmark score has been altered.
+
+## Measured V4 challenge and judge calibration — November 15, 2026
+
+**Source:** uploaded 15-ticket/model `report.md`, `summary.csv` and
+`runs.jsonl` (30 candidate runs), plus `judge-calibration.json`
+(12 judge decisions: six handcrafted cases under each rubric).
+
+| Challenge-set model | Strict solved | Tool pass | Diagnosis | Avg inference latency | Est. candidate inference $/ticket |
+|---|---:|---:|---:|---:|---:|
+| `gpt-4.1-mini` | **15/15 (100%)** | 100% | 100% | 1.98s | $0.000626 |
+| `gpt-4.1` | **15/15 (100%)** | 100% | 100% | 1.76s | $0.003236 |
+
+All 30 candidate runs succeeded on their current synthetic challenge set
+with the **original judge rubric v1** and with **zero controller corrections**.
+This set was created after reviewing previous failures, so it is
+**not** independent evidence of production reliability. Inference
+measurements exclude judge costs and live tool/network overhead.
+
+### Calibration outcome: adding evidence did not improve this judge
+
+| Judge configuration | Agreement with six handcrafted expectations |
+|---|---:|
+| Historical rubric v1 | **6/6 (100%)** |
+| Experimental rubric v2 | **4/6 (66.7%)** |
+
+Rubric v2 **incorrectly passed** (a) a response recommending the
+unsupported `ultra-gpu-999` SKU even while its own rationale recognized
+the recommendation as unsupported, and (b) a response naming specific
+SKUs without having retrieved supporting documentation. The second case
+mixes answer correctness with process compliance: the separate tool
+grader is responsible for mandatory documentation reads. Neither result
+establishes population-level calibration quality; the experiment only
+included six handcrafted cases and used `gpt-4.1` as judge.
+
+**Decision:** retain rubric v1 as the benchmark default. Do not silently
+regrade historical runs or claim rubric v2 is better because it receives
+more information. Add a *separate* deterministic advisory audit for
+unsupported product recommendations, credential requests and missing
+document provenance, then evaluate genuinely adversarial scenarios.
 
 ## Dataset design
 
