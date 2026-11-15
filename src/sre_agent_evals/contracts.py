@@ -8,7 +8,7 @@ EXPECTED_TOOLS = {"query_pool_status", "read_recent_job_logs", "check_quota", "l
 
 def validate_tool_contract(spec: dict) -> int:
     """Refuse invalid, writable, or mismatched tool definitions."""
-    if not isinstance(spec, dict) or spec.get("version") not in (1, 2, 3) or spec.get("read_only") is not True:
+    if not isinstance(spec, dict) or spec.get("version") not in (1, 2, 3, 4) or spec.get("read_only") is not True:
         raise ValueError("Unexpected or non-read-only tool specification")
     definitions = spec.get("tools")
     if not isinstance(definitions, dict) or set(definitions) != EXPECTED_TOOLS:
