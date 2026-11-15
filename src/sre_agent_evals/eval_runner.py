@@ -22,7 +22,8 @@ def estimate_cost(model: str, input_tokens: int, output_tokens: int, pricing: di
     return (input_tokens * rate["input_per_million"] + output_tokens * rate["output_per_million"]) / 1_000_000
 
 
-async def evaluate_one(agent, ticket, model: str, judge_client, judge_model: str | None, prices,\n                       rubric_version: int = 1):
+async def evaluate_one(agent, ticket, model: str, judge_client, judge_model: str | None, prices,
+                       rubric_version: int = 1):
     from agents import Runner
     from .agent import TicketContext
     from .judge import judge_answer
@@ -44,7 +45,9 @@ async def evaluate_one(agent, ticket, model: str, judge_client, judge_model: str
     judge_grade, judge_usage, judge_error = None, None, None
     if judge_model and output is not None:
         try:
-            judge_grade, judge_usage = await judge_answer(judge_client, ticket, output, ctx.tool_calls, judge_model,\n                                                        rubric_path=JUDGE_RUBRICS[rubric_version],\n                                                        rubric_version=rubric_version)
+            judge_grade, judge_usage = await judge_answer(judge_client, ticket, output, ctx.tool_calls, judge_model,
+                                                        rubric_path=JUDGE_RUBRICS[rubric_version],
+                                                        rubric_version=rubric_version)
         except Exception as exc:
             judge_error = f"{type(exc).__name__}: {exc}"
             # Fail closed: missing judge verdict must not create a false solve.
@@ -55,7 +58,8 @@ async def evaluate_one(agent, ticket, model: str, judge_client, judge_model: str
         "predicted_diagnosis": output.diagnosis_code if output else None,
         "response": output.model_dump() if output else None,
         "tool_calls": ctx.tool_calls, "tool_grade": tool_grade,
-        "label_grade": label_grade, "queue_action_audit": audit_queue_actions(ticket, output),\n        "judge_grade": judge_grade,
+        "label_grade": label_grade, "queue_action_audit": audit_queue_actions(ticket, output),
+        "judge_grade": judge_grade,
         "judge_error": judge_error, "judge_usage": judge_usage,
         "solved": bool(output is not None and not error and combined_solve(tool_grade, label_grade, judge_grade)),
         "latency_s": round(latency_s, 3), "input_tokens": input_tokens,
@@ -121,7 +125,8 @@ async def run(args):
     for ticket in tickets:
         for model in args.models:
             print(f"Evaluating {ticket.id} / {model} ...", flush=True)
-            row = await evaluate_one(agent_by_model[model], ticket, model, judge_client, judge_model, prices,\n                                     rubric_version=args.judge_rubric_version)
+            row = await evaluate_one(agent_by_model[model], ticket, model, judge_client, judge_model, prices,
+                                     rubric_version=args.judge_rubric_version)
             rows.append(row)
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
@@ -132,7 +137,8 @@ async def run(args):
         writer.writeheader()
         writer.writerows(summary)
     meta = {"created_at": datetime.now(timezone.utc).isoformat(), "models": args.models,
-            "judge_model": judge_model, "judge_rubric_version": args.judge_rubric_version,\n            "dataset": args.dataset, "tickets_per_model": len(tickets),
+            "judge_model": judge_model, "judge_rubric_version": args.judge_rubric_version,
+            "dataset": args.dataset, "tickets_per_model": len(tickets),
             "config_version": args.config_version, "prompt_path": str(prompt_path),
             "tool_contract_path": str(tools_path),
             "pricing_checked_on": prices["checked_on"],
@@ -148,7 +154,8 @@ def main():
     parser.add_argument("--dataset", default=str(Path(__file__).resolve().parents[2] / "data" / "tickets.jsonl"))
     parser.add_argument("--config-version", type=int, default=DEFAULT_CONFIG_VERSION,
                         choices=SUPPORTED_CONFIG_VERSIONS)
-    parser.add_argument("--judge-model", default="gpt-4.1")\n    parser.add_argument("--judge-rubric-version", type=int, choices=sorted(JUDGE_RUBRICS), default=1)
+    parser.add_argument("--judge-model", default="gpt-4.1")
+    parser.add_argument("--judge-rubric-version", type=int, choices=sorted(JUDGE_RUBRICS), default=1)
     parser.add_argument("--no-judge", action="store_true", help="Skip LLM judge; solve uses deterministic graders only")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--output", default="results")
