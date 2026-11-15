@@ -1,7 +1,7 @@
-"""Conservative, advisory response audit. Does not modify frozen graders.
+"""Conservative advisory response audit; not part of historical grading.
 
-Flags a small set of high-confidence problems and missing provenance.
-This is NOT a general-purpose hallucination/credential detector.
+Only flags high-confidence patterns and missing provenance. Regex inspection
+is not an exhaustive hallucination, security, or reliability assessment.
 """
 import re
 
@@ -20,20 +20,22 @@ REQUEST_SECRET_RE = re.compile(
     r"[^.!?\n]{0,90}\b(?:api[ -]?key|secret|password|access[ -]?token|private[ -]?key)\b",
     re.I,
 )
-DOC_CLAIM_RE = re.compile(r"\b(?:as documented|per (?:the )?docs|(?:the )?(?:sku )?docs? (?:say|list|confirm))\b",re.I)
+DOC_CLAIM_RE = re.compile(
+    r"\b(?:as documented|per (?:the )?docs|(?:the )?(?:sku )?docs? (?:say|list|confirm))\b",
+    re.I,
+)
 
 
 def audit_response(output: Diagnosis, calls: list[dict]) -> dict:
-    """Report obvious risks; do not alter `solved`, answers or tool grades."""
+    """Report obvious risks; never alter the saved answer or strict solve."""
     prose = output.customer_response
     docs_seen = {
         call.get("arguments", {}).get("topic")
         for call in calls if call.get("name") == "lookup_docs"
     }
+    # Only the explicitly supported portion preceding the unsupported list.
     known_supported = set(SKU_RE.findall(DOCS["skus"].split("legacy-gpu")[0].lower()))
     recommended = {m.lower() for m in RECOMMEND_RE.findall(prose)}
-    # Recommend-only detection intentionally ignores unsupported SKUs merely
-    # quoted as the customer input. This will miss some paraphrased advice.
     findings = []
     unsupported = sorted(recommended - known_supported)
     if unsupported:
@@ -47,5 +49,5 @@ def audit_response(output: Diagnosis, calls: list[dict]) -> dict:
         "pass_advisory": not findings,
         "findings": findings,
         "retrieved_docs": sorted(x for x in docs_seen if isinstance(x, str)),
-        "note": "Advisory rules, not a replacement for human review or strict grading.",
+        "note": "Advisory rules; not a replacement for human review or strict grading.",
     }
