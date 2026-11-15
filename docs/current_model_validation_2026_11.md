@@ -1,4 +1,4 @@
-# Current-model validation : GPT-6 Luna versus GPT-6.1 Sol
+# Current-model validation: GPT-6 Luna versus GPT-6.1 Sol
 
 **Run date:** 2026-11-15 (UTC). **Status:** completed, exploratory synthetic development benchmark.
 
