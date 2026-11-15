@@ -1,0 +1,23 @@
+version: 2
+service: nimbus-build-pools
+read_only: true
+tools:
+  query_pool_status:
+    description: "Inspect pool health, queue depth, running jobs, agent slots and capacity state."
+    arguments:
+      pool_id: {type: string, description: "Exact customer pool ID"}
+  read_recent_job_logs:
+    description: "Read the latest sanitized startup/build event lines for an exact job."
+    arguments:
+      job_id: {type: string, description: "Exact job ID"}
+  check_quota:
+    description: "Inspect organization concurrency quota and usage."
+    arguments:
+      org_id: {type: string, description: "Exact customer organization ID"}
+  lookup_docs:
+    description: "Read canonical platform guidance. The topic must be one of the enumerated values; never pass image names, SKU names, free-text queries, or fabricated topics."
+    arguments:
+      topic:
+        type: string
+        description: "Canonical documentation section. For an image error use images; unsupported SKU use skus; quota use quota; regional capacity use capacity; queue tuning use queue; bootstrap use startup; credential failures use authentication."
+        enum: [images, skus, quota, queue, capacity, startup, authentication]
