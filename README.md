@@ -17,6 +17,21 @@ explicitly separate, post-hoc V2 policy replay of **50/50** for each model.
 These are mocked, iterated development fixtures, not production validation
 or a statistically significant model ranking.
 
+## Documentation
+
+Start with the [documentation index](docs/README.md) for a guided path
+through setup, system design, evaluation methodology, experiment results,
+and decision records.
+
+- [Architecture and trust boundaries](docs/architecture.md): V4 data
+  flow, controller-to-model handoff, evaluator isolation, and security limits
+- [Architecture and Evaluation Decision Log](docs/architecture_decision_log.md):
+  why earlier experiments regressed and how design tradeoffs were resolved
+- [Current-model validation](docs/current_model_validation_2026_11.md):
+  the measured 50-ticket model comparison and failure analysis
+- [Queue-action policy V2](docs/queue_action_policy_v2.md): evidence-backed
+  post-hoc label decision with the original scores retained
+
 ## Current-model validation: November 2026 (50 tickets completed)
 
 A second controlled comparison evaluated the **current-model pair under the
@@ -106,6 +121,10 @@ The design is a deliberately small but realistic vertical slice of a customer-fa
 ## Architecture
 
 **V4 (current default): controller-led evidence gathering, then model reasoning.**
+
+See the [detailed architecture and trust boundary guide](docs/architecture.md) for
+what the controller validates, which information is untrusted, how expected
+labels stay out of candidate input, and what remains unproven in production.
 
 ```mermaid
 flowchart TD
