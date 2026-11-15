@@ -133,6 +133,30 @@ same five tickets may overfit; add unseen holdout incidents before describing
 production generalization. The new enum constrains tool arguments, but it does
 not independently prove that the agent reads the right docs or follows them.
 
+## Evaluation history: v1 → v2 → v3
+
+This is an **iteration log**, not an apples-to-apples leaderboard across different
+sample sizes. Each figure below is a measured solve rate for a given candidate
+model; v1 and v2 smoke tests contain the *same first five* synthetic tickets
+per model, while the v2 full evaluation covers all 50. No v1 full-set
+benchmark has been run, and no v3 outcome is claimed.
+
+| Configuration / dataset | GPT-4.1-mini solved | GPT-4.1 solved | Purpose |
+|---|---:|---:|---|
+| **v1 baseline**, 5-ticket smoke | 1/5 (20%) | 2/5 (40%) | Identify early tool-call reliability failures |
+| **v2**, same 5-ticket smoke | 4/5 (80%) | 5/5 (100%) | Check constrained docs topics and evidence policy |
+| **v2**, full 50 tickets | 35/50 (70%) | 45/50 (90%) | Characterize failure types and model tradeoffs |
+| **v3** | Not measured | Not measured | Proposed quota/missing-evidence/guardrail changes |
+
+The v1 → v2 change on the same five tickets coincided with better tool-pass
+rates (GPT-4.1-mini 20% → 80%; GPT-4.1 40% → 100%), with primary diagnosis
+accuracy 100% for both models in both smoke runs. This is a development-set
+observation, **not evidence of a 60-point improvement on the full 50 tickets**.
+Five tickets and templated variants are inadequate to establish generalization
+or production readiness. See the full v2 scorecard below for its independently
+measured 50-ticket metrics. Validate v3 using the same fixed grading policy
+and new unseen holdout cases before claiming gains.
+
 ## Measured v2 benchmark — November 15, 2026
 
 **Source:** locally executed `sre-eval --models gpt-4.1-mini gpt-4.1 --config-version 2 --output results/v2-full`, uploaded aggregate report and 100 per-run JSONL records, reviewed before publication. Both models used the same 50 frozen synthetic tickets, v2 prompt/tool contract, original grading rules and `gpt-4.1` judge. **No v3 results are available.** Estimates exclude judge inference cost and operational escalation costs.
