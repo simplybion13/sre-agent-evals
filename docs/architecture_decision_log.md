@@ -1,4 +1,4 @@
-# Architecture and evaluation decision log — interview brief
+# Architecture and Evaluation Decision Log
 
 **Project:** Synthetic CI/CD build-pool support agent. Built rapidly with AI
 coding assistance; the relevant ownership is experimental design, architecture
@@ -81,25 +81,47 @@ The lesson: evaluation design and calibration are part of product quality;
 do not optimize the agent to a miscalibrated judge. Keep the original rubric
 for historical comparisons and report later rubric studies separately.
 
-## Decision 5 — Why validate with current models now
+## Decision 5 — Why validate with current models, and what happened
 
-GPT-4.1 was a reasonable controlled historical pair, but a November 2026
-OpenAI interview should demonstrate awareness of **current** model choices.
-Use **GPT-6 Luna** (economical) and **GPT-6.1 Sol** (stronger reference)
-with **the same frozen V4 configuration** on a 5-ticket smoke test first.
-If the API/SDK supports both IDs and the smoke is clean, run the identical
-50-ticket development dataset, historical judge rubric v1, with model names
-and prices recorded. Follow with the pre-existing challenge and adversarial
-sets as separate exploratory evaluations. Do **not** edit earlier V1–V4
-scores, labels or prompts to make either new model look better.
+GPT-4.1 was a reasonable historical cost/reliability pair, but a
+November 2026 portfolio should distinguish a **controlled historical
+comparison** from current API model choices. After the initial five-ticket
+smoke passed for both candidates, we ran GPT-6 Luna (economical) and
+GPT-6.1 Sol (higher-priced reference) on the same 50 synthetic
+development tickets under the unchanged V4 controller, prompt, strict
+graders, labels and judge rubric V1.
 
-Only compare candidate costs on the same pricing tier, window and usage
-definition. Current listed **standard short-context** token rates:
-`gpt-6-luna` $0.10/M input and $0.50/M output;
-`gpt-6.1-sol` $2/M input and $10/M output (checked 2026-11-15).
-Actual invoices may differ for cached input, tier, reasoning tokens and
-other charges. Verify availability in the account and SDK before treating
-the run as completed.
+**Observed outcomes:** both solved 45/50 (90%), achieved 100% primary
+diagnosis and controller-level required-tool grades, and passed the
+separate response-quality judge on all tickets. Neither run recorded
+API/judge errors or safety-controller corrections. Luna cost an
+estimated **$0.000225 per attempted ticket** versus **$0.003915** for
+Sol, about **94% less candidate inference spend per attempt** at the
+illustrative standard-tier rates. The two models' average agent latency
+was 4.02 versus 4.21 seconds respectively. These are single-run
+synthetic results; no superiority claim follows from the one-ticket
+difference versus historical V4 scores (44/50 for both GPT-4.1 models).
+
+The **same five queue-saturation tickets** (`T010`, `T020`, `T030`,
+`T040`, `T050`) failed the strict action grade for *both* new models.
+Their primary diagnosis and required-tool grades passed and both
+recommended `tune_concurrency`, but omitted
+`retry_with_backoff`, which the frozen labels require. This is a
+**policy-review candidate, not permission to rewrite the scoreboard**:
+a separate domain expert should adjudicate inconsistent queue
+secondary-action requirements before any separately versioned rescore.
+
+**Decision:** The next unit of value is not more prompt tuning on a
+known synthetic dataset. It is independent label review, genuinely
+unseen incident evaluation, repeated-run uncertainty and fully loaded
+cost-per-safely-resolved case. The model prices omit cached input,
+judge, controller and real diagnostic infrastructure costs, which
+must be included in any real deployment selection.
+
+See [the complete modern-model comparison](current_model_validation_2026_11.md).
+To reproduce, run the documented command on the original V4 50-ticket set;
+never commit API credentials or claim the saved outcomes reproduce
+deterministically.
 
 ## Limitations and next decision
 
